@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fetch_attendance","fetch_members","fetch_streaks","increment_streak","reset_streak"]};

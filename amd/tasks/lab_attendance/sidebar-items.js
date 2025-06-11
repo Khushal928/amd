@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["AUTHOR_URL","TITLE_URL"],"fn":["check_lab_attendance","format_attendance_list","parse_time","send_attendance_report","send_lab_closed_message"],"struct":["PresenseReport"]};

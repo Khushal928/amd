@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["amdctl","get_commands","set_log_level"]};
