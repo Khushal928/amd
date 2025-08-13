@@ -84,7 +84,7 @@ async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
     };
 
     if reload_handle.reload(EnvFilter::new(&new_filter)).is_ok() {
-        ctx.say(format!("Log level changed to **{}**", new_filter))
+        ctx.say(format!("Log level changed to **{new_filter}**"))
             .await?;
         info!("Log level changed to {}", new_filter);
     } else {

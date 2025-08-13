@@ -228,14 +228,13 @@ pub async fn fetch_attendance() -> anyhow::Result<Vec<AttendanceRecord>> {
     let query = format!(
         r#"
         query {{
-            attendanceByDate(date: "{}") {{
+            attendanceByDate(date: "{today}") {{
                 name,
                 year,
                 isPresent,
                 timeIn,
             }}
-        }}"#,
-        today
+        }}"#
     );
 
     let response = client

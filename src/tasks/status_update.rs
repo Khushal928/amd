@@ -159,10 +159,7 @@ fn categorize_members(
             nice_list.push(member.clone());
         } else {
             let track = member.track.clone();
-            naughty_list
-                .entry(track)
-                .or_insert_with(Vec::new)
-                .push(member.clone());
+            naughty_list.entry(track).or_default().push(member.clone());
         }
     }
 
@@ -196,15 +193,11 @@ async fn generate_embed(
 
     description.push_str("# Leaderboard Updates\n");
 
-    description.push_str(&format!(
-        "## All-Time High Streak: {} days\n",
-        all_time_high
-    ));
+    description.push_str(&format!("## All-Time High Streak: {all_time_high} days\n"));
     description.push_str(&format_members(&all_time_high_members));
 
     description.push_str(&format!(
-        "## Current Highest Streak: {} days\n",
-        current_highest
+        "## Current Highest Streak: {current_highest} days\n"
     ));
     description.push_str(&format_members(&current_highest_members));
 
@@ -229,7 +222,7 @@ fn format_members(members: &[Member]) -> String {
             .collect::<Vec<_>>()
             .join("\n");
 
-        format!("{}\n", list)
+        format!("{list}\n")
     } else {
         String::from("More than five members hold this record!\n")
     }
@@ -239,8 +232,8 @@ fn format_defaulters(naughty_list: &GroupedMember) -> String {
     let mut description = String::new();
     for (track, missed_members) in naughty_list {
         match track {
-            Some(t) => description.push_str(&format!("## Track - {}\n", t)),
-            None => description.push_str(&format!("## Unassigned")),
+            Some(t) => description.push_str(&format!("## Track - {t}\n")),
+            None => description.push_str("## Unassigned"),
         }
 
         for member in missed_members {
