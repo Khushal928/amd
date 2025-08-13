@@ -158,7 +158,7 @@ fn categorize_members(
         if sent_updates.contains(&member.discord_id) {
             nice_list.push(member.clone());
         } else {
-            let track= member.track.clone();
+            let track = member.track.clone();
             naughty_list
                 .entry(track)
                 .or_insert_with(Vec::new)
@@ -238,9 +238,9 @@ fn format_members(members: &[Member]) -> String {
 fn format_defaulters(naughty_list: &GroupedMember) -> String {
     let mut description = String::new();
     for (track, missed_members) in naughty_list {
-        match track{
+        match track {
             Some(t) => description.push_str(&format!("## Track - {}\n", t)),
-            None => description.push_str(&format!("## Unassigned"))
+            None => description.push_str(&format!("## Unassigned")),
         }
 
         for member in missed_members {
