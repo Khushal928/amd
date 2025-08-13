@@ -1,40 +1,17 @@
 # amFOSS Daemon
 
-Discord bot used for the official amFOSS server for members. Built with [Serenity](https://www.github.com/serenity-rs/serenity) and [Poise](ttps://www.github.com/serenity-rs/poise).
+A discord bot designed specifically for the amFOSS server, to automate chores like role assignment, lab attendance and status update tracking. `amD` does not have a database of it's own, and relies on [Root.](https://www.github.com/amfoss/amd)
 
-## Getting Started
+# Running your own instance
 
-### Prerequisites
-Before proceeding, ensure you have the following:
+`amD` is tailored for the amFOSS server and as such, is not really a project worth forking for your own needs. There are many other alternative templates for Discord bots you could use instead.
 
-1. Rust
-```bash
-# Download and install Rust using rustup
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+If you want to contribute to `amD`, you'll likely need to run your own instance to test your contributions. To compile from source, you'll need:
 
-# Add Rust to the system PATH
-echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-````
-For more details, visit the [Official Rust installation page.](https://www.rust-lang.org/tools/install)
+- [Rust](https://www.rust-lang.org/tools/install)
+- A Discord Bot Token from the [Discord Developer Protal](https://discord.com/developers/) .
 
-2. A [Discord Bot Token](https://discord.com/developers/).
+After which, you can make your changes to the source code and modify the environment variables to have your own instance up and running. A more detailed guide to development and contributing can be found in [CONTRIBUTING.md.](/docs/CONTRIBUTING.md)
 
-### Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/amfoss/amd.git
-cd amd
-```
-
-2. Create a `.env` file in the root directory. You can refer `.env.sample` for the required variables.
-
-3. Run the bot locally with `cargo run`.
-
-## Contributing
-
-Refer [CONTRIBUTING.md](/docs/CONTRIBUTING.md).
-
-## License
+# License
 This project is licensed under the GNU General Public License v3.0. See the LICENSE file for details.

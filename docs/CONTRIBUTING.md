@@ -1,53 +1,10 @@
-# Contributing to amD
+Thank you for considering contributing to `amD`! This project has no novel guidelines for contributions you need to consider. If you have experience contributing to Open Source Software already, then you can skip right ahead to the parts of the documentation you're interested in. If you're new to Open Source, check out [this helpful guide](https://opensource.guide/how-to-contribute) that'll help you get started.
 
-Thank you for considering contributing to our Discord bot written in Rust using the [`serenity`](https://github.com/serenity-rs/serenity) and [`Poise`](https://github.com/serenity-rs/poise) libraries. We welcome contributions of all kinds, including bug reports, feature requests, and code improvements. This document provides a guide for contributing effectively.
+We don't have any strict rules when it comes to contributing. However, when opening a PR or an issue, writing a commit, or leaving a comment or a review, please remember that verbosity and attention to detail in your communication is appreciated. Try to include as much detail as reasonable in your messages in order to facilitate other developers and prevent guesswork.
 
-## Table of Contents
+The rest of this document will explain the high-level details of the internals of the bot as well it's interactions with external programs.
 
-1. [How to Contribute](#how-to-contribute)
-    - [Reporting Issues](#reporting-issues)
-    - [Suggesting Features](#suggesting-features)
-    - [Submitting Code Changes](#submitting-code-changes)
-2. [Coding Standards](#coding-standards)
-3. [Documentation](#documentation)
-
----
-
-## How To Contribute
-
-### Reporting Issues
-
-If you encounter a bug, please check existing issues first to avoid duplicates. If none exist, create a new issue with the following details:
-
-*  Title: Concise summary.
-* Description: A detailed description of the issue.
-*  Steps to Reproduce: If it's a bug, include steps to reproduce.
-* Expected and Actual Behavior: Describe what you expected and what actually happened.
-
-### Suggesting Features
-
-We welcome ideas! Please open an issue titled "Feature Request: `<Feature Name>`" and provide:
-
-* Problem: What problem does this feature solve?
-* Solution: Describe how you envision it working.
-* Alternatives Considered: Mention any alternatives you've considered.
-
-### Submitting Code Changes
-
-If you'd like to fix a bug, add a feature, or improve code quality:
-
-* Check the open issues to avoid redundancy.
-* Open a draft PR if you'd like feedback on an ongoing contribution.
-
-## Coding Standards
-
-* Follow Rust Conventions: Use idiomatic Rust patterns. Use `cargo fmt` and `cargo clippy` to format and lint your code.
-
-* Modularity: Write modular, reusable functions. Avoid monolithic code.
-
-* Descriptive Naming: Use descriptive names for variables, functions, and types.
-
-## Documentation
+# Documentation
 
 ### Command Handling
 
