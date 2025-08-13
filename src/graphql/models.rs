@@ -42,11 +42,9 @@ pub struct Member {
     pub name: String,
     #[serde(rename = "discordId")]
     pub discord_id: String,
-    #[serde(rename = "groupId")]
-    pub group_id: i32,
     #[serde(default)]
     pub streak: Vec<Streak>, // Note that Root will NOT have multiple Streak elements but it may be an empty list which is why we use a vector here
-    pub track: Option<String>
+    pub track: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
