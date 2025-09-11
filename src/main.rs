@@ -35,7 +35,12 @@ use serenity::{
 };
 use tokio::sync::RwLock;
 use tracing::info;
-use tracing_subscriber::{fmt, layer::SubscriberExt, reload, EnvFilter, Registry};
+use tracing_subscriber::{
+    fmt,
+    layer::SubscriberExt,
+    reload::{self, Layer},
+    EnvFilter, Registry,
+};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -93,7 +98,7 @@ fn build_filter_string(config: &TracingConfig) -> String {
 fn setup_tracing() -> anyhow::Result<ReloadHandle> {
     let config = TracingConfig::load_tracing_config();
     let filter_string = build_filter_string(&config);
-    let (filter, reload_handle) = reload::Layer::new(EnvFilter::new(filter_string));
+    let (filter, reload_handle) = Layer::new(EnvFilter::new(filter_string));
 
     if config.env != "production" {
         let subscriber = tracing_subscriber::registry()
