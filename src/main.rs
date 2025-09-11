@@ -77,20 +77,23 @@ impl TracingConfig {
     }
 }
 
+/// Return the appropriate String denoting the level and breadth of logs depending on the [`TracingConfig`] passed in.
+fn build_filter_string(config: &TracingConfig) -> String {
+    let crate_name = env!("CARGO_CRATE_NAME");
+
+    match (config.env.as_str(), config.enable_debug_libraries) {
+        ("production", true) => "info".to_string(),
+        ("production", false) => format!("{crate_name}=info"),
+
+        (_, true) => "trace".to_string(),
+        (_, false) => format!("{crate_name}=trace"),
+    }
+}
+
 fn setup_tracing() -> anyhow::Result<ReloadHandle> {
     let config = TracingConfig::load_tracing_config();
-    let crate_name = env!("CARGO_CRATE_NAME");
-    let (filter, reload_handle) = reload::Layer::new(EnvFilter::new(
-        if config.env == "production" && config.enable_debug_libraries {
-            "info".to_string()
-        } else if config.env == "production" && !config.enable_debug_libraries {
-            format!("{crate_name}=info")
-        } else if config.enable_debug_libraries {
-            "trace".to_string()
-        } else {
-            format!("{crate_name}=trace")
-        },
-    ));
+    let filter_string = build_filter_string(&config);
+    let (filter, reload_handle) = reload::Layer::new(EnvFilter::new(filter_string));
 
     if config.env != "production" {
         let subscriber = tracing_subscriber::registry()
