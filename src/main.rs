@@ -52,28 +52,47 @@ pub struct Data {
     pub log_reload_handle: ReloadHandle,
 }
 
-fn setup_tracing() -> anyhow::Result<ReloadHandle> {
-    let env = std::env::var("AMD_RUST_ENV").context("RUST_ENV was not found in the ENV")?;
-    let enable_debug_libraries_string = std::env::var("ENABLE_DEBUG_LIBRARIES")
-        .context("ENABLE_DEBUG_LIBRARIES was not found in the ENV")?;
-    let enable_debug_libraries: bool = enable_debug_libraries_string
-        .parse()
-        .context("Failed to parse ENABLE_DEBUG_LIBRARIES")?;
-    let crate_name = env!("CARGO_CRATE_NAME");
+/// Environment variables that our tracing configuration relies on
+///
+/// # Fields
+///
+/// * env: String that decides in what context the application will be running on i.e "production" or "development". This allows us to filter out logs from `stdout` when in production. Possible TODO: Could be replaced to a boolean `is_dev` or something similar to be more constrained than a string.
+/// * enable_debug_libraries: Boolean flag that controls whether tracing will output logs from other crates used in the project. This is only needed for really serious bugs.
+struct TracingConfig {
+    env: String,
+    enable_debug_libraries: bool,
+}
 
+impl TracingConfig {
+    /// Encapsulate all the required env variables into a [`TracingConfig`]
+    fn load_tracing_config() -> Self {
+        Self {
+            env: std::env::var("AMD_RUST_ENV").unwrap_or("development".to_string()),
+            // Some Rust shenanigans to set the default value to a boolean false:
+            enable_debug_libraries: std::env::var("ENABLE_DEBUG_LIBRARIES")
+                .unwrap_or("false".to_string())
+                .parse()
+                .unwrap_or(false),
+        }
+    }
+}
+
+fn setup_tracing() -> anyhow::Result<ReloadHandle> {
+    let config = TracingConfig::load_tracing_config();
+    let crate_name = env!("CARGO_CRATE_NAME");
     let (filter, reload_handle) = reload::Layer::new(EnvFilter::new(
-        if env == "production" && enable_debug_libraries {
+        if config.env == "production" && config.enable_debug_libraries {
             "info".to_string()
-        } else if env == "production" && !enable_debug_libraries {
+        } else if config.env == "production" && !config.enable_debug_libraries {
             format!("{crate_name}=info")
-        } else if enable_debug_libraries {
+        } else if config.enable_debug_libraries {
             "trace".to_string()
         } else {
             format!("{crate_name}=trace")
         },
     ));
 
-    if env != "production" {
+    if config.env != "production" {
         let subscriber = tracing_subscriber::registry()
             .with(filter)
             .with(fmt::layer().pretty().with_writer(std::io::stdout))
