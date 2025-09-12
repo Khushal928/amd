@@ -95,35 +95,51 @@ fn build_filter_string(config: &TracingConfig) -> String {
     }
 }
 
+/// Build a suitable subscriber based on the context of the environment (i.e production or development). The only difference in subscriber configuration is that in a production context, logs are only sent to `amd.log` and not to `stdout`. This is done on the assumption that when deployed in production, checking terminal logs is neither reliable nor convenient.
+///
+/// # Arguments
+///
+/// * env: A string that can be set to "production" in order to disable logging to `stdout` and when set to anything else, enable logging to `stdout`.
+/// * filter: The filter used to determine the log level for this subscriber.
+///
+/// Returns the initialized subscriber inside a [`Box`].
+fn build_subscriber<L>(
+    env: String,
+    filter: L,
+) -> anyhow::Result<Box<dyn tracing::Subscriber + Send + Sync>>
+where
+    L: tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
+{
+    let file_layer = fmt::layer()
+        .pretty()
+        .with_ansi(false)
+        .with_writer(File::create("amd.log").context("Failed to create log file")?);
+
+    if env != "production" {
+        Ok(Box::new(
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(file_layer)
+                .with(fmt::layer().pretty().with_writer(std::io::stdout)),
+        ))
+    } else {
+        Ok(Box::new(
+            tracing_subscriber::registry().with(filter).with(file_layer),
+        ))
+    }
+}
+
 fn setup_tracing() -> anyhow::Result<ReloadHandle> {
     let config = TracingConfig::load_tracing_config();
     let filter_string = build_filter_string(&config);
     let (filter, reload_handle) = Layer::new(EnvFilter::new(filter_string));
 
-    if config.env != "production" {
-        let subscriber = tracing_subscriber::registry()
-            .with(filter)
-            .with(fmt::layer().pretty().with_writer(std::io::stdout))
-            .with(
-                fmt::layer()
-                    .pretty()
-                    .with_ansi(false)
-                    .with_writer(File::create("amd.log").context("Failed to create subscriber")?),
-            );
+    let boxed_subscriber: Box<dyn tracing::Subscriber + Send + Sync> =
+        build_subscriber(config.env, filter)?;
+    tracing::subscriber::set_global_default(boxed_subscriber)
+        .context("Failed to set subscriber")?;
 
-        tracing::subscriber::set_global_default(subscriber).context("Failed to set subscriber")?;
-        Ok(Arc::new(RwLock::new(reload_handle)))
-    } else {
-        let subscriber = tracing_subscriber::registry().with(filter).with(
-            fmt::layer()
-                .pretty()
-                .with_ansi(false)
-                .with_writer(File::create("amd.log").context("Failed to create subscriber")?),
-        );
-
-        tracing::subscriber::set_global_default(subscriber).context("Failed to set subscriber")?;
-        Ok(Arc::new(RwLock::new(reload_handle)))
-    }
+    Ok(Arc::new(RwLock::new(reload_handle)))
 }
 
 #[tokio::main]
