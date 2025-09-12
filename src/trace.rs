@@ -33,10 +33,10 @@ pub type ReloadHandle = Arc<RwLock<reload::Handle<EnvFilter, Registry>>>;
 ///
 /// # Fields
 ///
-/// * env: String that decides in what context the application will be running on i.e "production" or "development". This allows us to filter out logs from `stdout` when in production. Possible TODO: Could be replaced to a boolean `is_dev` or something similar to be more constrained than a string.
+/// * debug: a boolean flag that decides in what context the application will be running on. When true, it is assumed to be in development. This allows us to filter out logs from `stdout` when in production.
 /// * enable_debug_libraries: Boolean flag that controls whether tracing will output logs from other crates used in the project. This is only needed for really serious bugs.
 struct TracingConfig {
-    env: String,
+    debug: bool,
     enable_debug_libraries: bool,
 }
 
@@ -44,8 +44,11 @@ impl TracingConfig {
     /// Encapsulate all the required env variables into a [`TracingConfig`]
     fn load_tracing_config() -> Self {
         Self {
-            env: std::env::var("AMD_RUST_ENV").unwrap_or("development".to_string()),
             // Some Rust shenanigans to set the default value to a boolean false:
+            debug: std::env::var("DEBUG")
+                .unwrap_or("false".to_string())
+                .parse()
+                .unwrap_or(false),
             enable_debug_libraries: std::env::var("ENABLE_DEBUG_LIBRARIES")
                 .unwrap_or("false".to_string())
                 .parse()
@@ -58,12 +61,12 @@ impl TracingConfig {
 fn build_filter_string(config: &TracingConfig) -> String {
     let crate_name = env!("CARGO_CRATE_NAME");
 
-    match (config.env.as_str(), config.enable_debug_libraries) {
-        ("production", true) => "info".to_string(),
-        ("production", false) => format!("{crate_name}=info"),
+    match (config.debug, config.enable_debug_libraries) {
+        (true, true) => "info".to_string(),
+        (true, false) => format!("{crate_name}=info"),
 
-        (_, true) => "trace".to_string(),
-        (_, false) => format!("{crate_name}=trace"),
+        (false, true) => "trace".to_string(),
+        (false, false) => format!("{crate_name}=trace"),
     }
 }
 
@@ -71,12 +74,12 @@ fn build_filter_string(config: &TracingConfig) -> String {
 ///
 /// # Arguments
 ///
-/// * env: A string that can be set to "production" in order to disable logging to `stdout` and when set to anything else, enable logging to `stdout`.
+/// * debug: A boolean that can be set to true in order to disable logging to `stdout` and when set to false, enable logging to `stdout`.
 /// * filter: The filter used to determine the log level for this subscriber.
 ///
 /// Returns the initialized subscriber inside a [`Box`].
 fn build_subscriber<L>(
-    env: String,
+    debug: bool,
     filter: L,
 ) -> anyhow::Result<Box<dyn tracing::Subscriber + Send + Sync>>
 where
@@ -87,7 +90,7 @@ where
         .with_ansi(false)
         .with_writer(File::create("amd.log").context("Failed to create log file")?);
 
-    if env != "production" {
+    if debug {
         Ok(Box::new(
             tracing_subscriber::registry()
                 .with(filter)
@@ -107,7 +110,7 @@ pub fn setup_tracing() -> anyhow::Result<ReloadHandle> {
     let (filter, reload_handle) = Layer::new(EnvFilter::new(filter_string));
 
     let boxed_subscriber: Box<dyn tracing::Subscriber + Send + Sync> =
-        build_subscriber(config.env, filter)?;
+        build_subscriber(config.debug, filter)?;
     tracing::subscriber::set_global_default(boxed_subscriber)
         .context("Failed to set subscriber")?;
 

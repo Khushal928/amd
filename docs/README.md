@@ -11,7 +11,7 @@ If you want to contribute to `amD`, you'll likely need to run your own instance 
 - [Rust](https://www.rust-lang.org/tools/install)
 - A Discord Bot Token from the [Discord Developer Protal](https://discord.com/developers/) .
 
-After which, you can make your changes to the source code and modify the environment variables to have your own instance up and running. A more detailed guide to development and contributing can be found in [CONTRIBUTING.md.](/docs/CONTRIBUTING.md)
+After which, you can make your changes to the source code and modify the environment variables to have your own instance up and running. A more detailed guide to development and contributing can be found in [CONTRIBUTING.md.](./docs/CONTRIBUTING.md)
 
 # License
 This project is licensed under the GNU General Public License v3.0. See the LICENSE file for details.
