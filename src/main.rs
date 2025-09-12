@@ -40,10 +40,10 @@ use tracing::info;
 
 use std::collections::{HashMap, HashSet};
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Context<'a> = PoiseContext<'a, Data, Error>;
+type Error = Box<dyn std::error::Error + Send + Sync>;
+type Context<'a> = PoiseContext<'a, Data, Error>;
 
-pub struct Data {
+struct Data {
     pub reaction_roles: HashMap<ReactionType, RoleId>,
     pub log_reload_handle: ReloadHandle,
 }
