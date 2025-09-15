@@ -101,6 +101,7 @@ impl BotConfig {
     }
 }
 
+/// Builds a [`poise::Framework`] with the given arguments and commands from [`commands::get_commands`].
 fn build_framework(owner_id: UserId, prefix_string: String, data: Data) -> Framework<Data, Error> {
     Framework::builder()
         .options(FrameworkOptions {
