@@ -48,26 +48,51 @@ struct Data {
     pub log_reload_handle: ReloadHandle,
 }
 
+/// Struct to hold the resources necessary for the Discord bot to operate.
+///
+/// # Fields
+///
+/// * discord_token: The bot's discord token obtained from the Discord Developer Portal.
+/// * owner_id: Used to allow access to privileged commands to specific users. Potential TODO: It would be more useful to allow access to certain roles (such as Moderator) in the Discord server instead. Poise already supports passing multiple IDs in the owner field when setting up the bot.
+struct BotConfig {
+    discord_token: String,
+    owner_id: UserId,
+}
+
+impl BotConfig {
+    /// Returns a new [`BotConfig`] with variables loaded in from env.
+    ///
+    /// Panics if any of the fields are not found in the env.
+    fn from_env() -> anyhow::Result<Self> {
+        let discord_token =
+            std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN was not found in env")?;
+        let owner_id = UserId::from(
+            std::env::var("OWNER_ID")
+                .context("OWNER_ID was not found in the env")?
+                .parse::<u64>()
+                .context("Failed to parse OWNER_ID")?,
+        );
+
+        Ok(Self {
+            discord_token,
+            owner_id,
+        })
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv::dotenv().ok();
     let reload_handle = setup_tracing().context("Failed to setup tracing")?;
-
     info!("Tracing initialized. Continuing main...");
+
     let mut data = Data {
         reaction_roles: HashMap::new(),
         log_reload_handle: reload_handle,
     };
     populate_data_with_reaction_roles(&mut data);
 
-    let discord_token =
-        std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN was not found in the ENV")?;
-    let owner_id: u64 = std::env::var("OWNER_ID")
-        .context("OWNER_ID was not found in the ENV")?
-        .parse()
-        .context("Failed to parse owner_id")?;
-    let owner_user_id = UserId::from(owner_id);
-
+    let bot_config = BotConfig::from_env().context("Failed to load BotConfig from env")?;
     let framework = Framework::builder()
         .options(FrameworkOptions {
             commands: commands::get_commands(),
@@ -78,7 +103,7 @@ async fn main() -> Result<(), Error> {
                 prefix: Some(String::from("$")),
                 ..Default::default()
             },
-            owners: HashSet::from([owner_user_id]),
+            owners: HashSet::from([bot_config.owner_id]),
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
@@ -91,7 +116,7 @@ async fn main() -> Result<(), Error> {
         .build();
 
     let mut client = serenity::client::ClientBuilder::new(
-        discord_token,
+        bot_config.discord_token,
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
     )
     .framework(framework)
