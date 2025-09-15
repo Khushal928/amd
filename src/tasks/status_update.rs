@@ -25,7 +25,8 @@ use serenity::async_trait;
 
 use super::Task;
 use crate::graphql::models::{Member, StreakWithMemberId};
-use crate::graphql::queries::{fetch_members, fetch_streaks, increment_streak, reset_streak};
+use crate::graphql::mutations::{increment_streak, reset_streak};
+use crate::graphql::queries::{fetch_members, fetch_streaks};
 use crate::ids::{
     AI_CHANNEL_ID, MOBILE_CHANNEL_ID, STATUS_UPDATE_CHANNEL_ID, SYSTEMS_CHANNEL_ID, WEB_CHANNEL_ID,
 };
