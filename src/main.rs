@@ -31,6 +31,7 @@ use crate::trace::ReloadHandle;
 use anyhow::Context as _;
 use poise::{Context as PoiseContext, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use reaction_roles::{handle_reaction, populate_data_with_reaction_roles};
+use serenity::client::ClientBuilder;
 use serenity::{
     all::{ReactionType, RoleId, UserId},
     client::{Context as SerenityContext, FullEvent},
@@ -89,6 +90,30 @@ impl BotConfig {
     }
 }
 
+fn build_framework(owner_id: UserId, prefix_string: String, data: Data) -> Framework<Data, Error> {
+    Framework::builder()
+        .options(FrameworkOptions {
+            commands: commands::get_commands(),
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
+            },
+            prefix_options: PrefixFrameworkOptions {
+                prefix: Some(prefix_string),
+                ..Default::default()
+            },
+            owners: HashSet::from([owner_id]),
+            ..Default::default()
+        })
+        .setup(|ctx, _ready, framework| {
+            Box::pin(async move {
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                scheduler::run_scheduler(ctx.clone()).await;
+                Ok(data)
+            })
+        })
+        .build()
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv::dotenv().ok();
@@ -103,29 +128,8 @@ async fn main() -> Result<(), Error> {
 
     let bot_config =
         BotConfig::new_with_prefix(String::from("$")).context("Failed to construct BotConfig")?;
-    let framework = Framework::builder()
-        .options(FrameworkOptions {
-            commands: commands::get_commands(),
-            event_handler: |ctx, event, framework, data| {
-                Box::pin(event_handler(ctx, event, framework, data))
-            },
-            prefix_options: PrefixFrameworkOptions {
-                prefix: Some(String::from("$")),
-                ..Default::default()
-            },
-            owners: HashSet::from([bot_config.owner_id]),
-            ..Default::default()
-        })
-        .setup(|ctx, _ready, framework| {
-            Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                scheduler::run_scheduler(ctx.clone()).await;
-                Ok(data)
-            })
-        })
-        .build();
-
-    let mut client = serenity::client::ClientBuilder::new(
+    let framework = build_framework(bot_config.owner_id, bot_config.prefix_string, data);
+    let mut client = ClientBuilder::new(
         bot_config.discord_token,
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
     )
