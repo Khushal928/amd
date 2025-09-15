@@ -54,29 +54,38 @@ struct Data {
 ///
 /// * discord_token: The bot's discord token obtained from the Discord Developer Portal.
 /// * owner_id: Used to allow access to privileged commands to specific users. Potential TODO: It would be more useful to allow access to certain roles (such as Moderator) in the Discord server instead. Poise already supports passing multiple IDs in the owner field when setting up the bot.
+/// * prefix_string: The prefix used to issue commands to the bot on Discord.
+#[derive(Default)]
 struct BotConfig {
     discord_token: String,
     owner_id: UserId,
+    prefix_string: String,
 }
 
 impl BotConfig {
-    /// Returns a new [`BotConfig`] with variables loaded in from env.
+    fn new_with_prefix(prefix_string: String) -> anyhow::Result<BotConfig> {
+        let mut bot_config = BotConfig::default();
+        bot_config
+            .load_env_var()
+            .context("Failed to load environment variables for BotConfig")?;
+        bot_config.prefix_string = prefix_string;
+
+        Ok(bot_config)
+    }
+    /// Loads [`BotConfig`]'s `discord_token` and `owner_id` fields from environment variables.
     ///
     /// Panics if any of the fields are not found in the env.
-    fn from_env() -> anyhow::Result<Self> {
-        let discord_token =
+    fn load_env_var(&mut self) -> anyhow::Result<()> {
+        self.discord_token =
             std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN was not found in env")?;
-        let owner_id = UserId::from(
+        self.owner_id = UserId::from(
             std::env::var("OWNER_ID")
                 .context("OWNER_ID was not found in the env")?
                 .parse::<u64>()
                 .context("Failed to parse OWNER_ID")?,
         );
 
-        Ok(Self {
-            discord_token,
-            owner_id,
-        })
+        Ok(())
     }
 }
 
@@ -92,7 +101,8 @@ async fn main() -> Result<(), Error> {
     };
     populate_data_with_reaction_roles(&mut data);
 
-    let bot_config = BotConfig::from_env().context("Failed to load BotConfig from env")?;
+    let bot_config =
+        BotConfig::new_with_prefix(String::from("$")).context("Failed to construct BotConfig")?;
     let framework = Framework::builder()
         .options(FrameworkOptions {
             commands: commands::get_commands(),
