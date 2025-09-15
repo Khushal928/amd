@@ -30,7 +30,7 @@ use crate::trace::setup_tracing;
 use crate::trace::ReloadHandle;
 use anyhow::Context as _;
 use poise::{Context as PoiseContext, Framework, FrameworkOptions, PrefixFrameworkOptions};
-use reaction_roles::{handle_reaction, populate_data_with_reaction_roles};
+use reaction_roles::handle_reaction;
 use serenity::client::ClientBuilder;
 use serenity::{
     all::{ReactionType, RoleId, UserId},
@@ -44,9 +44,20 @@ use std::collections::{HashMap, HashSet};
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = PoiseContext<'a, Data, Error>;
 
+/// The [`Data`] struct is kept in-memory by the Bot till it shutdowns and can be used to store session-persistent data.
 struct Data {
     pub reaction_roles: HashMap<ReactionType, RoleId>,
     pub log_reload_handle: ReloadHandle,
+}
+
+impl Data {
+    /// Returns a new [`Data`] with an empty `reaction_roles` field and the passed-in `reload_handle`.
+    fn new_with_reload_handle(reload_handle: ReloadHandle) -> Self {
+        Data {
+            reaction_roles: HashMap::new(),
+            log_reload_handle: reload_handle,
+        }
+    }
 }
 
 /// Struct to hold the resources necessary for the Discord bot to operate.
@@ -120,15 +131,13 @@ async fn main() -> Result<(), Error> {
     let reload_handle = setup_tracing().context("Failed to setup tracing")?;
     info!("Tracing initialized. Continuing main...");
 
-    let mut data = Data {
-        reaction_roles: HashMap::new(),
-        log_reload_handle: reload_handle,
-    };
-    populate_data_with_reaction_roles(&mut data);
+    let mut data = Data::new_with_reload_handle(reload_handle);
+    data.populate_with_reaction_roles();
 
     let bot_config =
         BotConfig::new_with_prefix(String::from("$")).context("Failed to construct BotConfig")?;
     let framework = build_framework(bot_config.owner_id, bot_config.prefix_string, data);
+
     let mut client = ClientBuilder::new(
         bot_config.discord_token,
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,

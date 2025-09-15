@@ -11,40 +11,42 @@ use crate::{
     Data,
 };
 
-pub fn populate_data_with_reaction_roles(data: &mut Data) {
-    let roles = [
-        (
-            ReactionType::Unicode("📁".to_string()),
-            RoleId::new(ARCHIVE_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("📱".to_string()),
-            RoleId::new(MOBILE_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("⚙️".to_string()),
-            RoleId::new(SYSTEMS_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("🤖".to_string()),
-            RoleId::new(AI_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("📜".to_string()),
-            RoleId::new(RESEARCH_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("🚀".to_string()),
-            RoleId::new(DEVOPS_ROLE_ID),
-        ),
-        (
-            ReactionType::Unicode("🌐".to_string()),
-            RoleId::new(WEB_ROLE_ID),
-        ),
-    ];
+impl Data {
+    pub fn populate_with_reaction_roles(&mut self) {
+        let roles = [
+            (
+                ReactionType::Unicode("📁".to_string()),
+                RoleId::new(ARCHIVE_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("📱".to_string()),
+                RoleId::new(MOBILE_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("⚙️".to_string()),
+                RoleId::new(SYSTEMS_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("🤖".to_string()),
+                RoleId::new(AI_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("📜".to_string()),
+                RoleId::new(RESEARCH_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("🚀".to_string()),
+                RoleId::new(DEVOPS_ROLE_ID),
+            ),
+            (
+                ReactionType::Unicode("🌐".to_string()),
+                RoleId::new(WEB_ROLE_ID),
+            ),
+        ];
 
-    data.reaction_roles
-        .extend::<HashMap<ReactionType, RoleId>>(roles.into());
+        self.reaction_roles
+            .extend::<HashMap<ReactionType, RoleId>>(roles.into());
+    }
 }
 
 pub async fn handle_reaction(
