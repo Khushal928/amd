@@ -19,9 +19,7 @@ mod commands;
 mod graphql;
 mod ids;
 mod reaction_roles;
-/// This module is a simple cron equivalent. It spawns threads for the [`Task`]s that need to be completed.
 mod scheduler;
-/// A trait to define a job that needs to be executed regularly, for example checking for status updates daily.
 mod tasks;
 mod trace;
 mod utils;

@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+//! This module is a simple cron equivalent. It spawns threads for the [`Task`]s that need to be completed.
 use crate::tasks::{get_tasks, Task};
 
 use serenity::client::Context as SerenityContext;

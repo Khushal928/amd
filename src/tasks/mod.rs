@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+//! A trait to define a job that needs to be executed regularly, for example checking for status updates daily.
 mod lab_attendance;
 mod status_update;
 
