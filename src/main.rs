@@ -24,8 +24,6 @@ mod tasks;
 mod trace;
 mod utils;
 
-use crate::trace::setup_tracing;
-use crate::trace::ReloadHandle;
 use anyhow::Context as _;
 use poise::{Context as PoiseContext, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use reaction_roles::handle_reaction;
@@ -35,6 +33,7 @@ use serenity::{
     client::{Context as SerenityContext, FullEvent},
     model::gateway::GatewayIntents,
 };
+use trace::{setup_tracing, ReloadHandle};
 use tracing::info;
 
 use std::collections::{HashMap, HashSet};

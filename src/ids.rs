@@ -18,6 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /// Points to the Embed in the #roles channel.
 pub const ROLES_MESSAGE_ID: u64 = 1298636092886749294;
 
+/// Fourth and Third Year Roles for privileged commands
+pub const FOURTH_YEAR_ROLE_ID: u64 = 1135793659040772240;
+pub const THIRD_YEAR_ROLE_ID: u64 = 1166292683317321738;
+
 // Role IDs
 pub const ARCHIVE_ROLE_ID: u64 = 1208457364274028574;
 pub const MOBILE_ROLE_ID: u64 = 1298553701094395936;
