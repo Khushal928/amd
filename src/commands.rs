@@ -44,65 +44,52 @@ async fn amdctl(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(prefix_command, owners_only)]
-async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
-    trace!("Running set_log_level command");
-    let data = ctx.data();
-    let reload_handle = data.log_reload_handle.write().await;
+/// Returns whether the provided `level` String is a valid filter level for tracing.
+fn validate_level(level: &String) -> bool {
+    const VALID_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
+    if !VALID_LEVELS.contains(&level.as_str()) {
+        true
+    } else {
+        false
+    }
+}
 
+fn build_filter_string(level: String) -> anyhow::Result<String> {
     let enable_debug_libraries_string = std::env::var("ENABLE_DEBUG_LIBRARIES")
         .context("ENABLE_DEBUG_LIBRARIES was not found in the ENV")?;
     let enable_debug_libraries: bool = enable_debug_libraries_string
         .parse()
         .context("Failed to parse ENABLE_DEBUG_LIBRARIES")?;
     let crate_name = env!("CARGO_CRATE_NAME");
-    let new_filter = match level.to_lowercase().as_str() {
-        "trace" => {
-            if enable_debug_libraries {
-                "trace".to_string()
-            } else {
-                format!("{crate_name}=trace")
-            }
-        }
-        "debug" => {
-            if enable_debug_libraries {
-                "debug".to_string()
-            } else {
-                format!("{crate_name}=debug")
-            }
-        }
-        "info" => {
-            if enable_debug_libraries {
-                "info".to_string()
-            } else {
-                format!("{crate_name}=info")
-            }
-        }
-        "warn" => {
-            if enable_debug_libraries {
-                "warn".to_string()
-            } else {
-                format!("{crate_name}=warn")
-            }
-        }
-        "error" => {
-            if enable_debug_libraries {
-                "error".to_string()
-            } else {
-                format!("{crate_name}=error")
-            }
-        }
-        _ => {
-            ctx.say("Invalid log level! Use: trace, debug, info, warn, error")
-                .await?;
-            return Ok(());
-        }
-    };
 
-    if reload_handle.reload(EnvFilter::new(&new_filter)).is_ok() {
-        ctx.say(format!("Log level changed to **{new_filter}**"))
+    if enable_debug_libraries {
+        Ok(level)
+    } else {
+        Ok(format!("{crate_name}={level}"))
+    }
+}
+
+#[poise::command(prefix_command, owners_only)]
+async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
+    trace!("Running set_log_level command");
+    if !validate_level(&level) {
+        ctx.say("Invalid log level! Use: trace, debug, info, warn, error")
             .await?;
-        info!("Log level changed to {}", new_filter);
+        return Ok(());
+    }
+
+    let new_filter_level = build_filter_string(level)?;
+
+    let data = ctx.data();
+    let reload_handle = data.log_reload_handle.write().await;
+
+    if reload_handle
+        .reload(EnvFilter::new(&new_filter_level))
+        .is_ok()
+    {
+        ctx.say(format!("Log level changed to **{new_filter_level}**"))
+            .await?;
+        info!("Log level changed to {}", new_filter_level);
     } else {
         ctx.say("Failed to update log level.").await?;
     }
