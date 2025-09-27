@@ -15,35 +15,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+//! Module for the set_log_level command.
+
+use crate::{Context, Error};
 use anyhow::Context as _;
-use serenity::all::RoleId;
 use tracing::{info, trace};
 use tracing_subscriber::EnvFilter;
-
-use crate::{
-    ids::{FOURTH_YEAR_ROLE_ID, THIRD_YEAR_ROLE_ID},
-    Context, Data, Error,
-};
-
-/// Checks if the author has the Fourth Year or Third Year role. Can be used as an authorization procedure for other commands.
-async fn is_privileged(ctx: &Context<'_>) -> bool {
-    if let Some(guild_id) = ctx.guild_id() {
-        if let Ok(member) = guild_id.member(ctx, ctx.author().id).await {
-            return member.roles.contains(&RoleId::new(FOURTH_YEAR_ROLE_ID))
-                || member.roles.contains(&RoleId::new(THIRD_YEAR_ROLE_ID));
-        }
-    }
-
-    false
-}
-
-#[poise::command(prefix_command)]
-async fn amdctl(ctx: Context<'_>) -> Result<(), Error> {
-    trace!("Running amdctl command");
-    ctx.say("amD is up and running.").await?;
-    Ok(())
-}
-
 /// Returns whether the provided `level` String is a valid filter level for tracing.
 fn validate_level(level: &String) -> bool {
     const VALID_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
@@ -70,7 +47,7 @@ fn build_filter_string(level: String) -> anyhow::Result<String> {
 }
 
 #[poise::command(prefix_command, owners_only)]
-async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
+pub async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
     trace!("Running set_log_level command");
     if !validate_level(&level) {
         ctx.say("Invalid log level! Use: trace, debug, info, warn, error")
@@ -95,9 +72,4 @@ async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
     }
 
     Ok(())
-}
-
-/// Returns a vector containg [Poise Commands][`poise::Command`]
-pub fn get_commands() -> Vec<poise::Command<Data, Error>> {
-    vec![amdctl(), set_log_level()]
 }
