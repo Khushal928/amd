@@ -42,7 +42,7 @@ struct TracingConfig {
 
 impl TracingConfig {
     /// Encapsulate all the required env variables into a [`TracingConfig`]
-    fn load_tracing_config() -> Self {
+    fn build_tracing_config() -> Self {
         Self {
             // Some Rust shenanigans to set the default value to a boolean false:
             debug: std::env::var("DEBUG")
@@ -105,7 +105,7 @@ where
 }
 
 pub fn setup_tracing() -> anyhow::Result<ReloadHandle> {
-    let config = TracingConfig::load_tracing_config();
+    let config = TracingConfig::build_tracing_config();
     let filter_string = build_filter_string(&config);
     let (filter, reload_handle) = Layer::new(EnvFilter::new(filter_string));
 
