@@ -45,6 +45,7 @@ pub struct Member {
     #[serde(default)]
     pub streak: Vec<Streak>, // Note that Root will NOT have multiple Streak elements but it may be an empty list which is why we use a vector here
     pub track: Option<String>,
+    pub year: i32,
 }
 
 #[derive(Debug, Deserialize, Clone)]

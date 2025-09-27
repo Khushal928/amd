@@ -63,7 +63,8 @@ const CHANDRA_MOULI: &str = "1265880467047976970";
 
 async fn status_update_check(ctx: Context) -> anyhow::Result<()> {
     let updates = get_updates(&ctx).await?;
-    let members = fetch_members().await?;
+    let mut members = fetch_members().await?;
+    members.retain(|member| member.year != 4);
 
     // naughty_list -> members who did not send updates
     let (mut naughty_list, mut nice_list) = categorize_members(&members, updates);
