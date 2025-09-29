@@ -29,39 +29,11 @@ use tracing_subscriber::{
 
 pub type ReloadHandle = Arc<RwLock<reload::Handle<EnvFilter, Registry>>>;
 
-/// Environment variables that our tracing configuration relies on
-///
-/// # Fields
-///
-/// * debug: a boolean flag that decides in what context the application will be running on. When true, it is assumed to be in development. This allows us to filter out logs from `stdout` when in production.
-/// * enable_debug_libraries: Boolean flag that controls whether tracing will output logs from other crates used in the project. This is only needed for really serious bugs.
-struct TracingConfig {
-    debug: bool,
-    enable_debug_libraries: bool,
-}
-
-impl TracingConfig {
-    /// Encapsulate all the required env variables into a [`TracingConfig`]
-    fn build_tracing_config() -> Self {
-        Self {
-            // Some Rust shenanigans to set the default value to a boolean false:
-            debug: std::env::var("DEBUG")
-                .unwrap_or("false".to_string())
-                .parse()
-                .unwrap_or(false),
-            enable_debug_libraries: std::env::var("ENABLE_DEBUG_LIBRARIES")
-                .unwrap_or("false".to_string())
-                .parse()
-                .unwrap_or(false),
-        }
-    }
-}
-
 /// Return the appropriate String denoting the level and breadth of logs depending on the [`TracingConfig`] passed in.
-fn build_filter_string(config: &TracingConfig) -> String {
+fn build_filter_string(debug: bool, enable_debug_libraries: bool) -> String {
     let crate_name = env!("CARGO_CRATE_NAME");
 
-    match (config.debug, config.enable_debug_libraries) {
+    match (debug, enable_debug_libraries) {
         (true, true) => "info".to_string(),
         (true, false) => format!("{crate_name}=info"),
 
@@ -104,13 +76,12 @@ where
     }
 }
 
-pub fn setup_tracing() -> anyhow::Result<ReloadHandle> {
-    let config = TracingConfig::build_tracing_config();
-    let filter_string = build_filter_string(&config);
+pub fn setup_tracing(debug: bool, enable_debug_libraries: bool) -> anyhow::Result<ReloadHandle> {
+    let filter_string = build_filter_string(debug, enable_debug_libraries);
     let (filter, reload_handle) = Layer::new(EnvFilter::new(filter_string));
 
     let boxed_subscriber: Box<dyn tracing::Subscriber + Send + Sync> =
-        build_subscriber(config.debug, filter)?;
+        build_subscriber(debug, filter)?;
     tracing::subscriber::set_global_default(boxed_subscriber)
         .context("Failed to set subscriber")?;
 

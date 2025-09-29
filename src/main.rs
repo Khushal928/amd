@@ -34,9 +34,9 @@ use serenity::{
     model::gateway::GatewayIntents,
 };
 use trace::{setup_tracing, ReloadHandle};
-use tracing::info;
+use tracing::{error, info};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = PoiseContext<'a, Data, Error>;
@@ -57,49 +57,12 @@ impl Data {
     }
 }
 
-/// Struct to hold the resources necessary for the Discord bot to operate.
-///
-/// # Fields
-///
-/// * discord_token: The bot's discord token obtained from the Discord Developer Portal.
-/// * owner_id: Used to allow access to privileged commands to specific users. Potential TODO: It would be more useful to allow access to certain roles (such as Moderator) in the Discord server instead. Poise already supports passing multiple IDs in the owner field when setting up the bot.
-/// * prefix_string: The prefix used to issue commands to the bot on Discord.
-#[derive(Default)]
-struct BotConfig {
-    discord_token: String,
-    owner_id: UserId,
-    prefix_string: String,
-}
-
-impl BotConfig {
-    fn new_with_prefix(prefix_string: String) -> anyhow::Result<BotConfig> {
-        let mut bot_config = BotConfig::default();
-        bot_config
-            .load_env_var()
-            .context("Failed to load environment variables for BotConfig")?;
-        bot_config.prefix_string = prefix_string;
-
-        Ok(bot_config)
-    }
-    /// Loads [`BotConfig`]'s `discord_token` and `owner_id` fields from environment variables.
-    ///
-    /// Panics if any of the fields are not found in the env.
-    fn load_env_var(&mut self) -> anyhow::Result<()> {
-        self.discord_token =
-            std::env::var("DISCORD_TOKEN").context("DISCORD_TOKEN was not found in env")?;
-        self.owner_id = UserId::from(
-            std::env::var("OWNER_ID")
-                .context("OWNER_ID was not found in the env")?
-                .parse::<u64>()
-                .context("Failed to parse OWNER_ID")?,
-        );
-
-        Ok(())
-    }
-}
-
 /// Builds a [`poise::Framework`] with the given arguments and commands from [`commands::get_commands`].
-fn build_framework(owner_id: UserId, prefix_string: String, data: Data) -> Framework<Data, Error> {
+fn build_framework(
+    owners: Option<UserId>,
+    prefix_string: String,
+    data: Data,
+) -> Framework<Data, Error> {
     Framework::builder()
         .options(FrameworkOptions {
             commands: commands::get_commands(),
@@ -110,7 +73,7 @@ fn build_framework(owner_id: UserId, prefix_string: String, data: Data) -> Frame
                 prefix: Some(prefix_string),
                 ..Default::default()
             },
-            owners: HashSet::from([owner_id]),
+            owners: owners.into_iter().collect(),
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
@@ -123,21 +86,79 @@ fn build_framework(owner_id: UserId, prefix_string: String, data: Data) -> Frame
         .build()
 }
 
+/// Environment variables for amD
+///
+/// # Fields
+///
+/// * debug: a boolean flag that decides in what context the application will be running on. When true, it is assumed to be in development. This allows us to filter out logs from `stdout` when in production. Defaults to false if not set.
+/// * enable_debug_libraries: Boolean flag that controls whether tracing will output logs from other crates used in the project. This is only needed for really serious bugs. Defaults to false if not set.
+/// * discord_token: The bot's discord token obtained from the Discord Developer Portal. The only mandatory variable required.
+/// * owner_id: Used to allow access to privileged commands to specific users. If not passed, will set the bot to have no owners.
+/// * prefix_string: The prefix used to issue commands to the bot on Discord. Always set to "$".
+struct Config {
+    debug: bool,
+    enable_debug_libraries: bool,
+    discord_token: String,
+    owner_id: Option<UserId>,
+    prefix_string: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            debug: parse_bool_env("DEBUG"),
+            enable_debug_libraries: parse_bool_env("ENABLE_DEBUG_LIBRARIES"),
+            discord_token: std::env::var("DISCORD_TOKEN")
+                .expect("DISCORD_TOKEN was not found in env"),
+            owner_id: parse_owner_id_env("OWNER_ID"),
+            prefix_string: String::from("$"),
+        }
+    }
+}
+
+/// Tries to access the environment variable through the key passed in. If it is set, it will try to parse it as u64 and if that fails, it will log the error and return the default value None. If it suceeds the u64 parsing, it will convert it to a UserId and return Some(UserId). If the env. var. is not set, it will return None.
+fn parse_owner_id_env(key: &str) -> Option<UserId> {
+    std::env::var(key)
+        .ok()
+        .and_then(|s| {
+            s.parse::<u64>()
+                .map_err(|_| error!("Warning: Invalid OWNER_ID value '{}', ignoring.", s))
+                .ok()
+        })
+        .map(UserId::new)
+}
+
+/// Tries to access the environment variable through the key passed in. If it is set but an invalid boolean, it will log an error through tracing and default to false. If it is not set, it will default to false.
+fn parse_bool_env(key: &str) -> bool {
+    std::env::var(key)
+        .map(|val| {
+            val.parse().unwrap_or_else(|_| {
+                error!(
+                    "Warning: Invalid DEBUG value '{}', defaulting to false",
+                    val
+                );
+                false
+            })
+        })
+        .unwrap_or(false)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv::dotenv().ok();
-    let reload_handle = setup_tracing().context("Failed to setup tracing")?;
+
+    let config = Config::default();
+    let reload_handle = setup_tracing(config.debug, config.enable_debug_libraries)
+        .context("Failed to setup tracing")?;
     info!("Tracing initialized. Continuing main...");
 
     let mut data = Data::new_with_reload_handle(reload_handle);
     data.populate_with_reaction_roles();
 
-    let bot_config =
-        BotConfig::new_with_prefix(String::from("$")).context("Failed to construct BotConfig")?;
-    let framework = build_framework(bot_config.owner_id, bot_config.prefix_string, data);
+    let framework = build_framework(config.owner_id, config.prefix_string, data);
 
     let mut client = ClientBuilder::new(
-        bot_config.discord_token,
+        config.discord_token,
         GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
     )
     .framework(framework)
