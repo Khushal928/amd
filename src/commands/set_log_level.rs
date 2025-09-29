@@ -19,7 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Context, Error};
 use anyhow::Context as _;
-use tracing::{info, trace};
+use tracing::info;
+use tracing::instrument;
 use tracing_subscriber::EnvFilter;
 /// Returns whether the provided `level` String is a valid filter level for tracing.
 fn validate_level(level: &String) -> bool {
@@ -47,8 +48,8 @@ fn build_filter_string(level: String) -> anyhow::Result<String> {
 }
 
 #[poise::command(prefix_command, owners_only)]
+#[instrument(level = "debug", skip(ctx))]
 pub async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
-    trace!("Running set_log_level command");
     if !validate_level(&level) {
         ctx.say("Invalid log level! Use: trace, debug, info, warn, error")
             .await?;
