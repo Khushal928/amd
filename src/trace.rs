@@ -57,7 +57,7 @@ fn build_subscriber<L>(
 where
     L: tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
 {
-    let span_events = fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE;
+    let span_events = fmt::format::FmtSpan::NEW;
     let file_layer = file_layer(&span_events)?;
 
     let stdout_layer = if debug {
