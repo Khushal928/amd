@@ -57,23 +57,30 @@ fn build_subscriber<L>(
 where
     L: tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
 {
+    let span_events = fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE;
     let file_layer = fmt::layer()
         .pretty()
         .with_ansi(false)
-        .with_writer(File::create("amd.log").context("Failed to create log file")?);
+        .with_writer(File::create("amd.log").context("Failed to create log file")?)
+        .with_span_events(span_events.clone());
 
-    if debug {
-        Ok(Box::new(
-            tracing_subscriber::registry()
-                .with(filter)
-                .with(file_layer)
-                .with(fmt::layer().pretty().with_writer(std::io::stdout)),
-        ))
+    let stdout_layer = if debug {
+        Some(
+            fmt::layer()
+                .pretty()
+                .with_writer(std::io::stdout)
+                .with_span_events(span_events),
+        )
     } else {
-        Ok(Box::new(
-            tracing_subscriber::registry().with(filter).with(file_layer),
-        ))
-    }
+        None
+    };
+
+    Ok(Box::new(
+        tracing_subscriber::registry()
+            .with(filter)
+            .with(file_layer)
+            .with(stdout_layer),
+    ))
 }
 
 pub fn setup_tracing(debug: bool, enable_debug_libraries: bool) -> anyhow::Result<ReloadHandle> {
