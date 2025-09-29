@@ -34,11 +34,11 @@ fn build_filter_string(debug: bool, enable_debug_libraries: bool) -> String {
     let crate_name = env!("CARGO_CRATE_NAME");
 
     match (debug, enable_debug_libraries) {
-        (true, true) => "info".to_string(),
-        (true, false) => format!("{crate_name}=info"),
+        (true, true) => "trace".to_string(),
+        (true, false) => format!("{crate_name}=trace"),
 
-        (false, true) => "trace".to_string(),
-        (false, false) => format!("{crate_name}=trace"),
+        (false, true) => "info".to_string(),
+        (false, false) => format!("{crate_name}=info"),
     }
 }
 
