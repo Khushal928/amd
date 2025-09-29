@@ -34,7 +34,7 @@ use serenity::{
     model::gateway::GatewayIntents,
 };
 use trace::{setup_tracing, ReloadHandle};
-use tracing::{error, info};
+use tracing::{error, info, instrument, trace};
 
 use std::collections::HashMap;
 
@@ -122,7 +122,7 @@ fn parse_owner_id_env(key: &str) -> Option<UserId> {
         .ok()
         .and_then(|s| {
             s.parse::<u64>()
-                .map_err(|_| error!("Warning: Invalid OWNER_ID value '{}', ignoring.", s))
+                .map_err(|_| eprintln!("WARNING: Invalid OWNER_ID value '{}', ignoring.", s))
                 .ok()
         })
         .map(UserId::new)
@@ -133,7 +133,7 @@ fn parse_bool_env(key: &str) -> bool {
     std::env::var(key)
         .map(|val| {
             val.parse().unwrap_or_else(|_| {
-                error!(
+                eprintln!(
                     "Warning: Invalid DEBUG value '{}', defaulting to false",
                     val
                 );
