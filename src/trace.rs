@@ -58,19 +58,10 @@ where
     L: tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
 {
     let span_events = fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE;
-    let file_layer = fmt::layer()
-        .pretty()
-        .with_ansi(false)
-        .with_writer(File::create("amd.log").context("Failed to create log file")?)
-        .with_span_events(span_events.clone());
+    let file_layer = file_layer(&span_events)?;
 
     let stdout_layer = if debug {
-        Some(
-            fmt::layer()
-                .pretty()
-                .with_writer(std::io::stdout)
-                .with_span_events(span_events),
-        )
+        Some(stdout_layer(span_events))
     } else {
         None
     };
@@ -81,6 +72,35 @@ where
             .with(file_layer)
             .with(stdout_layer),
     ))
+}
+
+type StdoutLayer<L> = fmt::Layer<
+    L,
+    fmt::format::Pretty,
+    fmt::format::Format<fmt::format::Pretty>,
+    fn() -> std::io::Stdout,
+>;
+
+fn stdout_layer<L>(span_events: fmt::format::FmtSpan) -> StdoutLayer<L> {
+    fmt::layer()
+        .pretty()
+        .with_writer(std::io::stdout as fn() -> std::io::Stdout)
+        .with_span_events(span_events)
+}
+
+type FileLayer<L> = fmt::Layer<
+    tracing_subscriber::layer::Layered<L, Registry>,
+    fmt::format::Pretty,
+    fmt::format::Format<fmt::format::Pretty>,
+    File,
+>;
+
+fn file_layer<L>(span_events: &fmt::format::FmtSpan) -> Result<FileLayer<L>, anyhow::Error> {
+    Ok(fmt::layer()
+        .pretty()
+        .with_ansi(false)
+        .with_writer(File::create("amd.log").context("Failed to create log file")?)
+        .with_span_events(span_events.clone()))
 }
 
 pub fn setup_tracing(debug: bool, enable_debug_libraries: bool) -> anyhow::Result<ReloadHandle> {
