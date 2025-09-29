@@ -34,7 +34,7 @@ use serenity::{
     model::gateway::GatewayIntents,
 };
 use trace::{setup_tracing, ReloadHandle};
-use tracing::{error, info, instrument, trace};
+use tracing::{info, instrument};
 
 use std::collections::HashMap;
 
@@ -58,6 +58,7 @@ impl Data {
 }
 
 /// Builds a [`poise::Framework`] with the given arguments and commands from [`commands::get_commands`].
+#[instrument(level = "debug", skip(data))]
 fn build_framework(
     owners: Option<UserId>,
     prefix_string: String,
@@ -150,7 +151,6 @@ async fn main() -> Result<(), Error> {
     let config = Config::default();
     let reload_handle = setup_tracing(config.debug, config.enable_debug_libraries)
         .context("Failed to setup tracing")?;
-    info!("Tracing initialized. Continuing main...");
 
     let mut data = Data::new_with_reload_handle(reload_handle);
     data.populate_with_reaction_roles();
@@ -165,12 +165,12 @@ async fn main() -> Result<(), Error> {
     .await
     .context("Failed to create the Serenity client")?;
 
+    info!("Starting amD...");
+
     client
         .start()
         .await
         .context("Failed to start the Serenity client")?;
-
-    info!("Starting amD...");
 
     Ok(())
 }
@@ -183,10 +183,10 @@ async fn event_handler(
 ) -> Result<(), Error> {
     match event {
         FullEvent::ReactionAdd { add_reaction } => {
-            handle_reaction(ctx, add_reaction, data, true).await;
+            handle_reaction(ctx, add_reaction, data, true).await?;
         }
         FullEvent::ReactionRemove { removed_reaction } => {
-            handle_reaction(ctx, removed_reaction, data, false).await;
+            handle_reaction(ctx, removed_reaction, data, false).await?;
         }
         _ => {}
     }
