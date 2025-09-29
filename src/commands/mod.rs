@@ -2,7 +2,7 @@ mod set_log_level;
 
 use crate::commands::set_log_level::set_log_level;
 use serenity::all::RoleId;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::{
     ids::{FOURTH_YEAR_ROLE_ID, THIRD_YEAR_ROLE_ID},

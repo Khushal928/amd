@@ -27,7 +27,6 @@ use lab_attendance::PresenseReport;
 use serenity::client::Context;
 use status_update::StatusUpdateCheck;
 use tokio::time::Duration;
-use tracing::instrument;
 
 /// A [`Task`] is any job that needs to be executed on a regular basis.
 /// A task has a function [`Task::run_in`] that returns the time till the
