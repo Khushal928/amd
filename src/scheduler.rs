@@ -20,22 +20,21 @@ use crate::tasks::{get_tasks, Task};
 
 use serenity::client::Context as SerenityContext;
 use tokio::spawn;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, instrument};
 
+#[instrument(level = "debug", skip(ctx))]
 pub async fn run_scheduler(ctx: SerenityContext) {
-    trace!("Running scheduler");
     let tasks = get_tasks();
 
     for task in tasks {
-        debug!("Spawing task {}", task.name());
         spawn(schedule_task(ctx.clone(), task));
     }
 }
 
+#[instrument(level = "debug", skip(ctx))]
 async fn schedule_task(ctx: SerenityContext, task: Box<dyn Task>) {
     loop {
         let next_run_in = task.run_in();
-        debug!("Task {}: Next run in {:?}", task.name(), next_run_in);
         tokio::time::sleep(next_run_in).await;
 
         debug!("Running task {}", task.name());
