@@ -1,15 +1,15 @@
 use anyhow::anyhow;
 use anyhow::Context as _;
 use tracing::debug;
+use tracing::instrument;
 
 use crate::graphql::models::Streak;
 
 use super::models::Member;
+use super::GraphQLClient;
 
-pub async fn increment_streak(member: &mut Member) -> anyhow::Result<()> {
-    let request_url = std::env::var("ROOT_URL").context("ROOT_URL was not found in ENV")?;
-
-    let client = reqwest::Client::new();
+#[instrument(level = "debug")]
+pub async fn increment_streak(member: &mut Member, client: GraphQLClient) -> anyhow::Result<()> {
     let mutation = format!(
         r#"
         mutation {{
@@ -23,7 +23,8 @@ pub async fn increment_streak(member: &mut Member) -> anyhow::Result<()> {
 
     debug!("Sending mutation {}", mutation);
     let response = client
-        .post(request_url)
+        .http
+        .post(client.root_url())
         .json(&serde_json::json!({"query": mutation}))
         .send()
         .await
@@ -75,10 +76,8 @@ pub async fn increment_streak(member: &mut Member) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn reset_streak(member: &mut Member) -> anyhow::Result<()> {
-    let request_url = std::env::var("ROOT_URL").context("ROOT_URL was not found in the ENV")?;
-
-    let client = reqwest::Client::new();
+#[instrument(level = "debug")]
+pub async fn reset_streak(member: &mut Member, client: GraphQLClient) -> anyhow::Result<()> {
     let mutation = format!(
         r#"
         mutation {{
@@ -92,7 +91,8 @@ pub async fn reset_streak(member: &mut Member) -> anyhow::Result<()> {
 
     debug!("Sending mutation {}", mutation);
     let response = client
-        .post(&request_url)
+        .http
+        .post(client.root_url())
         .json(&serde_json::json!({ "query": mutation }))
         .send()
         .await

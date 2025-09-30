@@ -18,3 +18,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pub mod models;
 pub mod mutations;
 pub mod queries;
+
+use std::sync::Arc;
+
+use reqwest::Client;
+
+#[derive(Debug, Clone)]
+pub struct GraphQLClient {
+    http: Client,
+    root_url: Arc<String>,
+}
+
+impl GraphQLClient {
+    pub fn new(root_url: String) -> Self {
+        Self {
+            http: Client::new(),
+            root_url: Arc::new(root_url.into()),
+        }
+    }
+
+    pub fn root_url(&self) -> &str {
+        &self.root_url
+    }
+}

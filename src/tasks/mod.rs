@@ -28,6 +28,8 @@ use serenity::client::Context;
 use status_update::StatusUpdateCheck;
 use tokio::time::Duration;
 
+use crate::graphql::GraphQLClient;
+
 /// A [`Task`] is any job that needs to be executed on a regular basis.
 /// A task has a function [`Task::run_in`] that returns the time till the
 /// next ['Task::run`] is run.
@@ -35,7 +37,7 @@ use tokio::time::Duration;
 pub trait Task: Send + Sync {
     fn name(&self) -> &str;
     fn run_in(&self) -> Duration;
-    async fn run(&self, ctx: Context) -> Result<()>;
+    async fn run(&self, ctx: Context, client: GraphQLClient) -> Result<()>;
 }
 
 impl Debug for Box<dyn Task> {

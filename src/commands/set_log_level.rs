@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //! Module for the set_log_level command.
 
 use crate::{Context, Error};
-use anyhow::Context as _;
 use tracing::info;
 use tracing::instrument;
 use tracing_subscriber::EnvFilter;

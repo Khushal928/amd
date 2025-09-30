@@ -22,11 +22,13 @@ use serenity::all::{
     CacheHttp, ChannelId, Context, CreateEmbed, CreateMessage, GetMessages, Message,
 };
 use serenity::async_trait;
+use tracing::instrument;
 
 use super::Task;
 use crate::graphql::models::{Member, StreakWithMemberId};
 use crate::graphql::mutations::{increment_streak, reset_streak};
 use crate::graphql::queries::{fetch_members, fetch_streaks};
+use crate::graphql::GraphQLClient;
 use crate::ids::{
     AI_CHANNEL_ID, MOBILE_CHANNEL_ID, STATUS_UPDATE_CHANNEL_ID, SYSTEMS_CHANNEL_ID, WEB_CHANNEL_ID,
 };
@@ -45,8 +47,8 @@ impl Task for StatusUpdateCheck {
         time_until(5, 00)
     }
 
-    async fn run(&self, ctx: Context) -> anyhow::Result<()> {
-        status_update_check(ctx).await
+    async fn run(&self, ctx: Context, client: GraphQLClient) -> anyhow::Result<()> {
+        status_update_check(ctx, client).await
     }
 }
 
@@ -61,16 +63,17 @@ struct ReportConfig {
 const AMAN_SHAFEEQ: &str = "767636699077410837";
 const CHANDRA_MOULI: &str = "1265880467047976970";
 
-async fn status_update_check(ctx: Context) -> anyhow::Result<()> {
+#[instrument(level = "debug", skip(ctx))]
+async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow::Result<()> {
     let updates = get_updates(&ctx).await?;
-    let mut members = fetch_members().await?;
+    let mut members = fetch_members(client.clone()).await?;
     members.retain(|member| member.year != 4);
 
     // naughty_list -> members who did not send updates
     let (mut naughty_list, mut nice_list) = categorize_members(&members, updates);
-    update_streaks_for_members(&mut naughty_list, &mut nice_list).await?;
+    update_streaks_for_members(client.clone(), &mut naughty_list, &mut nice_list).await?;
 
-    let embed = generate_embed(members, naughty_list).await?;
+    let embed = generate_embed(client, members, naughty_list).await?;
     let msg = CreateMessage::new().embed(embed);
 
     let status_update_channel = ChannelId::new(STATUS_UPDATE_CHANNEL_ID);
@@ -169,16 +172,17 @@ fn categorize_members(
 }
 
 async fn update_streaks_for_members(
+    client: GraphQLClient,
     naughty_list: &mut GroupedMember,
     nice_list: &mut Vec<Member>,
 ) -> anyhow::Result<()> {
     for member in nice_list {
-        increment_streak(member).await?;
+        increment_streak(member, client.clone()).await?;
     }
 
     for members in naughty_list.values_mut() {
         for member in members {
-            reset_streak(member).await?;
+            reset_streak(member, client.clone()).await?;
         }
     }
 
@@ -186,11 +190,12 @@ async fn update_streaks_for_members(
 }
 
 async fn generate_embed(
+    client: GraphQLClient,
     members: Vec<Member>,
     naughty_list: GroupedMember,
 ) -> anyhow::Result<CreateEmbed> {
     let (all_time_high, all_time_high_members, current_highest, current_highest_members) =
-        get_leaderboard_stats(members).await?;
+        get_leaderboard_stats(client, members).await?;
     let mut description = String::new();
 
     description.push_str("# Leaderboard Updates\n");
@@ -252,9 +257,10 @@ fn format_defaulters(naughty_list: &GroupedMember) -> String {
 }
 
 async fn get_leaderboard_stats(
+    client: GraphQLClient,
     members: Vec<Member>,
 ) -> anyhow::Result<(i32, Vec<Member>, i32, Vec<Member>)> {
-    let streaks = fetch_streaks().await?;
+    let streaks = fetch_streaks(client).await?;
     let member_map: HashMap<i32, &Member> = members.iter().map(|m| (m.member_id, m)).collect();
 
     let (all_time_high, all_time_high_members) = find_highest_streak(&streaks, &member_map, true);

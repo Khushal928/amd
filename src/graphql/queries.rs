@@ -22,12 +22,9 @@ use tracing::debug;
 
 use crate::graphql::models::{AttendanceRecord, Member};
 
-use super::models::StreakWithMemberId;
+use super::{models::StreakWithMemberId, GraphQLClient};
 
-pub async fn fetch_members() -> anyhow::Result<Vec<Member>> {
-    let request_url = std::env::var("ROOT_URL").context("ROOT_URL not found in ENV")?;
-
-    let client = reqwest::Client::new();
+pub async fn fetch_members(client: GraphQLClient) -> anyhow::Result<Vec<Member>> {
     let query = r#"
         {
           members {
@@ -45,7 +42,8 @@ pub async fn fetch_members() -> anyhow::Result<Vec<Member>> {
 
     debug!("Sending query {}", query);
     let response = client
-        .post(request_url)
+        .http
+        .post(client.root_url())
         .json(&serde_json::json!({"query": query}))
         .send()
         .await
@@ -81,13 +79,9 @@ pub async fn fetch_members() -> anyhow::Result<Vec<Member>> {
     Ok(members)
 }
 
-pub async fn fetch_attendance() -> anyhow::Result<Vec<AttendanceRecord>> {
-    let request_url =
-        std::env::var("ROOT_URL").context("ROOT_URL environment variable not found")?;
+pub async fn fetch_attendance(client: GraphQLClient) -> anyhow::Result<Vec<AttendanceRecord>> {
+    debug!("Fetching attendance data");
 
-    debug!("Fetching attendance data from {}", request_url);
-
-    let client = reqwest::Client::new();
     let today = Local::now().format("%Y-%m-%d").to_string();
     let query = format!(
         r#"
@@ -102,7 +96,8 @@ pub async fn fetch_attendance() -> anyhow::Result<Vec<AttendanceRecord>> {
     );
 
     let response = client
-        .post(&request_url)
+        .http
+        .post(client.root_url())
         .json(&serde_json::json!({ "query": query }))
         .send()
         .await
@@ -132,10 +127,7 @@ pub async fn fetch_attendance() -> anyhow::Result<Vec<AttendanceRecord>> {
     Ok(attendance)
 }
 
-pub async fn fetch_streaks() -> anyhow::Result<Vec<StreakWithMemberId>> {
-    let request_url = std::env::var("ROOT_URL").context("ROOT_URL not found in ENV")?;
-
-    let client = reqwest::Client::new();
+pub async fn fetch_streaks(client: GraphQLClient) -> anyhow::Result<Vec<StreakWithMemberId>> {
     let query = r#"
         {
           streaks {
@@ -148,7 +140,8 @@ pub async fn fetch_streaks() -> anyhow::Result<Vec<StreakWithMemberId>> {
 
     debug!("Sending query {}", query);
     let response = client
-        .post(request_url)
+        .http
+        .post(client.root_url())
         .json(&serde_json::json!({"query": query}))
         .send()
         .await

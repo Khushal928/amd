@@ -25,8 +25,10 @@ mod trace;
 mod utils;
 
 use anyhow::Context as _;
+use graphql::GraphQLClient;
 use poise::{Context as PoiseContext, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use reaction_roles::handle_reaction;
+use reqwest::Client;
 use serenity::client::ClientBuilder;
 use serenity::{
     all::{ReactionType, RoleId, UserId},
@@ -42,17 +44,20 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = PoiseContext<'a, Data, Error>;
 
 /// The [`Data`] struct is kept in-memory by the Bot till it shutdowns and can be used to store session-persistent data.
+#[derive(Clone)]
 struct Data {
-    pub reaction_roles: HashMap<ReactionType, RoleId>,
-    pub log_reload_handle: ReloadHandle,
+    reaction_roles: HashMap<ReactionType, RoleId>,
+    log_reload_handle: ReloadHandle,
+    graphql_client: GraphQLClient,
 }
 
 impl Data {
     /// Returns a new [`Data`] with an empty `reaction_roles` field and the passed-in `reload_handle`.
-    fn new_with_reload_handle(reload_handle: ReloadHandle) -> Self {
+    fn new(reload_handle: ReloadHandle, root_url: String) -> Self {
         Data {
             reaction_roles: HashMap::new(),
             log_reload_handle: reload_handle,
+            graphql_client: GraphQLClient::new(root_url),
         }
     }
 }
@@ -80,7 +85,7 @@ fn build_framework(
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                scheduler::run_scheduler(ctx.clone()).await;
+                scheduler::run_scheduler(ctx.clone(), data.graphql_client.clone()).await;
                 Ok(data)
             })
         })
@@ -102,6 +107,7 @@ struct Config {
     discord_token: String,
     owner_id: Option<UserId>,
     prefix_string: String,
+    root_url: String,
 }
 
 impl Default for Config {
@@ -113,6 +119,7 @@ impl Default for Config {
                 .expect("DISCORD_TOKEN was not found in env"),
             owner_id: parse_owner_id_env("OWNER_ID"),
             prefix_string: String::from("$"),
+            root_url: std::env::var("ROOT_URL").expect("ROOT_URL was not found in env"),
         }
     }
 }
@@ -152,7 +159,7 @@ async fn main() -> Result<(), Error> {
     let reload_handle = setup_tracing(config.debug, config.enable_debug_libraries)
         .context("Failed to setup tracing")?;
 
-    let mut data = Data::new_with_reload_handle(reload_handle);
+    let mut data = Data::new(reload_handle, config.root_url);
     data.populate_with_reaction_roles();
 
     let framework = build_framework(config.owner_id, config.prefix_string, data);

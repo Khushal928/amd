@@ -21,10 +21,11 @@ use chrono::{DateTime, Datelike, Local, NaiveTime, ParseError, TimeZone, Timelik
 use serenity::all::{
     ChannelId, Colour, Context as SerenityContext, CreateEmbed, CreateEmbedAuthor, CreateMessage,
 };
-use serenity::async_trait;
+use serenity::{async_trait, client};
 use std::collections::HashMap;
 use tracing::{debug, trace};
 
+use crate::graphql::GraphQLClient;
 use crate::{
     graphql::{models::AttendanceRecord, queries::fetch_attendance},
     ids::THE_LAB_CHANNEL_ID,
@@ -46,14 +47,17 @@ impl Task for PresenseReport {
         time_until(18, 00)
     }
 
-    async fn run(&self, ctx: SerenityContext) -> anyhow::Result<()> {
-        check_lab_attendance(ctx).await
+    async fn run(&self, ctx: SerenityContext, client: GraphQLClient) -> anyhow::Result<()> {
+        check_lab_attendance(ctx, client).await
     }
 }
 
-pub async fn check_lab_attendance(ctx: SerenityContext) -> anyhow::Result<()> {
+pub async fn check_lab_attendance(
+    ctx: SerenityContext,
+    client: GraphQLClient,
+) -> anyhow::Result<()> {
     trace!("Starting lab attendance check");
-    let attendance = fetch_attendance()
+    let attendance = fetch_attendance(client)
         .await
         .context("Failed to fetch attendance from Root")?;
 
