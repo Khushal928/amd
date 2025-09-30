@@ -32,12 +32,7 @@ fn validate_level(level: &String) -> bool {
     }
 }
 
-fn build_filter_string(level: String) -> anyhow::Result<String> {
-    let enable_debug_libraries_string = std::env::var("ENABLE_DEBUG_LIBRARIES")
-        .context("ENABLE_DEBUG_LIBRARIES was not found in the ENV")?;
-    let enable_debug_libraries: bool = enable_debug_libraries_string
-        .parse()
-        .context("Failed to parse ENABLE_DEBUG_LIBRARIES")?;
+fn build_filter_string(level: String, enable_debug_libraries: bool) -> anyhow::Result<String> {
     let crate_name = env!("CARGO_CRATE_NAME");
 
     if enable_debug_libraries {
@@ -49,14 +44,18 @@ fn build_filter_string(level: String) -> anyhow::Result<String> {
 
 #[poise::command(prefix_command, owners_only)]
 #[instrument(level = "debug", skip(ctx))]
-pub async fn set_log_level(ctx: Context<'_>, level: String) -> Result<(), Error> {
+pub async fn set_log_level(
+    ctx: Context<'_>,
+    level: String,
+    enable_debug_libraries: Option<bool>,
+) -> Result<(), Error> {
     if !validate_level(&level) {
         ctx.say("Invalid log level! Use: trace, debug, info, warn, error")
             .await?;
         return Ok(());
     }
 
-    let new_filter_level = build_filter_string(level)?;
+    let new_filter_level = build_filter_string(level, enable_debug_libraries.unwrap_or_default())?;
 
     let data = ctx.data();
     let reload_handle = data.log_reload_handle.write().await;
