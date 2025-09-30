@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 mod commands;
+mod config;
 mod graphql;
 mod ids;
 mod reaction_roles;
@@ -25,25 +26,26 @@ mod trace;
 mod utils;
 
 use anyhow::Context as _;
+use config::Config;
 use graphql::GraphQLClient;
 use poise::{Context as PoiseContext, Framework, FrameworkOptions, PrefixFrameworkOptions};
 use reaction_roles::handle_reaction;
-use reqwest::Client;
 use serenity::client::ClientBuilder;
+use serenity::Client;
 use serenity::{
     all::{ReactionType, RoleId, UserId},
     client::{Context as SerenityContext, FullEvent},
     model::gateway::GatewayIntents,
 };
 use trace::{setup_tracing, ReloadHandle};
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 use std::collections::HashMap;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = PoiseContext<'a, Data, Error>;
 
-/// The [`Data`] struct is kept in-memory by the Bot till it shutdowns and can be used to store session-persistent data.
+/// The [`Data`] struct is kept in-memory by the Bot till it shutsdown and can be used to store session-persistent data.
 #[derive(Clone)]
 struct Data {
     reaction_roles: HashMap<ReactionType, RoleId>,
@@ -92,87 +94,46 @@ fn build_framework(
         .build()
 }
 
-/// Environment variables for amD
-///
-/// # Fields
-///
-/// * debug: a boolean flag that decides in what context the application will be running on. When true, it is assumed to be in development. This allows us to filter out logs from `stdout` when in production. Defaults to false if not set.
-/// * enable_debug_libraries: Boolean flag that controls whether tracing will output logs from other crates used in the project. This is only needed for really serious bugs. Defaults to false if not set.
-/// * discord_token: The bot's discord token obtained from the Discord Developer Portal. The only mandatory variable required.
-/// * owner_id: Used to allow access to privileged commands to specific users. If not passed, will set the bot to have no owners.
-/// * prefix_string: The prefix used to issue commands to the bot on Discord. Always set to "$".
-struct Config {
-    debug: bool,
-    enable_debug_libraries: bool,
-    discord_token: String,
-    owner_id: Option<UserId>,
-    prefix_string: String,
-    root_url: String,
+fn prepare_data(config: &Config, reload_handle: ReloadHandle) -> Data {
+    let mut data = Data::new(reload_handle, config.root_url.clone());
+    data.populate_with_reaction_roles();
+    data
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            debug: parse_bool_env("DEBUG"),
-            enable_debug_libraries: parse_bool_env("ENABLE_DEBUG_LIBRARIES"),
-            discord_token: std::env::var("DISCORD_TOKEN")
-                .expect("DISCORD_TOKEN was not found in env"),
-            owner_id: parse_owner_id_env("OWNER_ID"),
-            prefix_string: String::from("$"),
-            root_url: std::env::var("ROOT_URL").expect("ROOT_URL was not found in env"),
-        }
-    }
-}
-
-/// Tries to access the environment variable through the key passed in. If it is set, it will try to parse it as u64 and if that fails, it will log the error and return the default value None. If it suceeds the u64 parsing, it will convert it to a UserId and return Some(UserId). If the env. var. is not set, it will return None.
-fn parse_owner_id_env(key: &str) -> Option<UserId> {
-    std::env::var(key)
-        .ok()
-        .and_then(|s| {
-            s.parse::<u64>()
-                .map_err(|_| eprintln!("WARNING: Invalid OWNER_ID value '{}', ignoring.", s))
-                .ok()
-        })
-        .map(UserId::new)
-}
-
-/// Tries to access the environment variable through the key passed in. If it is set but an invalid boolean, it will log an error through tracing and default to false. If it is not set, it will default to false.
-fn parse_bool_env(key: &str) -> bool {
-    std::env::var(key)
-        .map(|val| {
-            val.parse().unwrap_or_else(|_| {
-                eprintln!(
-                    "Warning: Invalid DEBUG value '{}', defaulting to false",
-                    val
-                );
-                false
-            })
-        })
-        .unwrap_or(false)
+async fn build_client(config: &Config, data: Data) -> Result<Client, anyhow::Error> {
+    ClientBuilder::new(
+        config.discord_token.clone(),
+        GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
+    )
+    .framework(build_framework(
+        config.owner_id,
+        config.prefix_string.clone(),
+        data,
+    ))
+    .await
+    .context("Failed to create the Serenity client")
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv::dotenv().ok();
-
     let config = Config::default();
+
     let reload_handle = setup_tracing(config.debug, config.enable_debug_libraries)
         .context("Failed to setup tracing")?;
 
-    let mut data = Data::new(reload_handle, config.root_url);
-    data.populate_with_reaction_roles();
+    info!(
+        "Starting {} v{}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
+    debug!(
+        "Configuration loaded: debug={}, enable_debug_libraries={}, owner_id={:?}, prefix_string={}, root_url={}",
+        config.debug, config.enable_debug_libraries, config.owner_id, config.prefix_string, config.root_url
+    );
 
-    let framework = build_framework(config.owner_id, config.prefix_string, data);
-
-    let mut client = ClientBuilder::new(
-        config.discord_token,
-        GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
-    )
-    .framework(framework)
-    .await
-    .context("Failed to create the Serenity client")?;
-
-    info!("Starting amD...");
+    let data = prepare_data(&config, reload_handle);
+    let mut client = build_client(&config, data).await?;
 
     client
         .start()
