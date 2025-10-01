@@ -30,6 +30,7 @@ pub async fn run_scheduler(ctx: SerenityContext, client: GraphQLClient) {
     let tasks = get_tasks();
 
     for task in tasks {
+        // TODO: Panics in this thread might be silent and won't be noticed. It should be caught, safely unwinded and ideally reported.
         spawn(schedule_task(ctx.clone(), task, client.clone()));
     }
 }

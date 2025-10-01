@@ -21,13 +21,13 @@ use chrono::{DateTime, Datelike, Local, NaiveTime, ParseError, TimeZone, Timelik
 use serenity::all::{
     ChannelId, Colour, Context as SerenityContext, CreateEmbed, CreateEmbedAuthor, CreateMessage,
 };
-use serenity::{async_trait, client};
+use serenity::async_trait;
 use std::collections::HashMap;
 use tracing::{debug, trace};
 
 use crate::graphql::GraphQLClient;
 use crate::{
-    graphql::{models::AttendanceRecord, queries::fetch_attendance},
+    graphql::models::AttendanceRecord,
     ids::THE_LAB_CHANNEL_ID,
     utils::time::{get_five_forty_five_pm_timestamp, time_until},
 };
@@ -57,7 +57,8 @@ pub async fn check_lab_attendance(
     client: GraphQLClient,
 ) -> anyhow::Result<()> {
     trace!("Starting lab attendance check");
-    let attendance = fetch_attendance(client)
+    let attendance = client
+        .fetch_attendance()
         .await
         .context("Failed to fetch attendance from Root")?;
 

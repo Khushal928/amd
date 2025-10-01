@@ -8,136 +8,142 @@ use crate::graphql::models::Streak;
 use super::models::Member;
 use super::GraphQLClient;
 
-#[instrument(level = "debug")]
-pub async fn increment_streak(member: &mut Member, client: GraphQLClient) -> anyhow::Result<()> {
-    let mutation = format!(
-        r#"
+impl GraphQLClient {
+    #[instrument(level = "debug")]
+    pub async fn increment_streak(&self, member: &mut Member) -> anyhow::Result<()> {
+        let mutation = format!(
+            r#"
         mutation {{
             incrementStreak(input: {{ memberId: {} }}) {{
                 currentStreak
                 maxStreak
             }}
         }}"#,
-        member.member_id
-    );
+            member.member_id
+        );
 
-    debug!("Sending mutation {}", mutation);
-    let response = client
-        .http
-        .post(client.root_url())
-        .json(&serde_json::json!({"query": mutation}))
-        .send()
-        .await
-        .context("Failed to succesfully post query to Root")?;
+        debug!("Sending mutation {}", mutation);
+        let response = self
+            .http()
+            .post(self.root_url())
+            .json(&serde_json::json!({"query": mutation}))
+            .send()
+            .await
+            .context("Failed to succesfully post query to Root")?;
 
-    if !response.status().is_success() {
-        return Err(anyhow!(
-            "Server responded with an error: {:?}",
-            response.status()
-        ));
-    }
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .context("Failed to parse response JSON")?;
-    debug!("Response: {}", response_json);
-
-    if let Some(data) = response_json
-        .get("data")
-        .and_then(|data| data.get("incrementStreak"))
-    {
-        let current_streak =
-            data.get("currentStreak")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("current_streak was parsed as None"))? as i32;
-        let max_streak =
-            data.get("maxStreak")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("max_streak was parsed as None"))? as i32;
-
-        if member.streak.is_empty() {
-            member.streak.push(Streak {
-                current_streak,
-                max_streak,
-            });
-        } else {
-            for streak in &mut member.streak {
-                streak.current_streak = current_streak;
-                streak.max_streak = max_streak;
-            }
+        if !response.status().is_success() {
+            return Err(anyhow!(
+                "Server responded with an error: {:?}",
+                response.status()
+            ));
         }
-    } else {
-        return Err(anyhow!(
-            "Failed to access data from response: {}",
-            response_json
-        ));
+        let response_json: serde_json::Value = response
+            .json()
+            .await
+            .context("Failed to parse response JSON")?;
+        debug!("Response: {}", response_json);
+
+        if let Some(data) = response_json
+            .get("data")
+            .and_then(|data| data.get("incrementStreak"))
+        {
+            let current_streak = data
+                .get("currentStreak")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("current_streak was parsed as None"))?
+                as i32;
+            let max_streak = data
+                .get("maxStreak")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("max_streak was parsed as None"))?
+                as i32;
+
+            if member.streak.is_empty() {
+                member.streak.push(Streak {
+                    current_streak,
+                    max_streak,
+                });
+            } else {
+                for streak in &mut member.streak {
+                    streak.current_streak = current_streak;
+                    streak.max_streak = max_streak;
+                }
+            }
+        } else {
+            return Err(anyhow!(
+                "Failed to access data from response: {}",
+                response_json
+            ));
+        }
+
+        Ok(())
     }
 
-    Ok(())
-}
-
-#[instrument(level = "debug")]
-pub async fn reset_streak(member: &mut Member, client: GraphQLClient) -> anyhow::Result<()> {
-    let mutation = format!(
-        r#"
+    #[instrument(level = "debug")]
+    pub async fn reset_streak(&self, member: &mut Member) -> anyhow::Result<()> {
+        let mutation = format!(
+            r#"
         mutation {{
             resetStreak(input: {{ memberId: {} }}) {{
                 currentStreak
                 maxStreak
             }}
         }}"#,
-        member.member_id
-    );
+            member.member_id
+        );
 
-    debug!("Sending mutation {}", mutation);
-    let response = client
-        .http
-        .post(client.root_url())
-        .json(&serde_json::json!({ "query": mutation }))
-        .send()
-        .await
-        .context("Failed to succesfully post query to Root")?;
+        debug!("Sending mutation {}", mutation);
+        let response = self
+            .http()
+            .post(self.root_url())
+            .json(&serde_json::json!({ "query": mutation }))
+            .send()
+            .await
+            .context("Failed to succesfully post query to Root")?;
 
-    if !response.status().is_success() {
-        return Err(anyhow!(
-            "Server responded with an error: {:?}",
-            response.status()
-        ));
-    }
-
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .context("Failed to parse response JSON")?;
-    debug!("Response: {}", response_json);
-
-    if let Some(data) = response_json
-        .get("data")
-        .and_then(|data| data.get("resetStreak"))
-    {
-        let current_streak =
-            data.get("currentStreak")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("current_streak was parsed as None"))? as i32;
-        let max_streak =
-            data.get("maxStreak")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| anyhow!("max_streak was parsed as None"))? as i32;
-
-        if member.streak.is_empty() {
-            member.streak.push(Streak {
-                current_streak,
-                max_streak,
-            });
-        } else {
-            for streak in &mut member.streak {
-                streak.current_streak = current_streak;
-                streak.max_streak = max_streak;
-            }
+        if !response.status().is_success() {
+            return Err(anyhow!(
+                "Server responded with an error: {:?}",
+                response.status()
+            ));
         }
-    } else {
-        return Err(anyhow!("Failed to access data from {}", response_json));
-    }
 
-    Ok(())
+        let response_json: serde_json::Value = response
+            .json()
+            .await
+            .context("Failed to parse response JSON")?;
+        debug!("Response: {}", response_json);
+
+        if let Some(data) = response_json
+            .get("data")
+            .and_then(|data| data.get("resetStreak"))
+        {
+            let current_streak = data
+                .get("currentStreak")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("current_streak was parsed as None"))?
+                as i32;
+            let max_streak = data
+                .get("maxStreak")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| anyhow!("max_streak was parsed as None"))?
+                as i32;
+
+            if member.streak.is_empty() {
+                member.streak.push(Streak {
+                    current_streak,
+                    max_streak,
+                });
+            } else {
+                for streak in &mut member.streak {
+                    streak.current_streak = current_streak;
+                    streak.max_streak = max_streak;
+                }
+            }
+        } else {
+            return Err(anyhow!("Failed to access data from {}", response_json));
+        }
+
+        Ok(())
+    }
 }

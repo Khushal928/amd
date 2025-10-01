@@ -40,4 +40,8 @@ impl GraphQLClient {
     pub fn root_url(&self) -> &str {
         &self.root_url
     }
+
+    pub fn http(&self) -> Client {
+        self.http.clone()
+    }
 }

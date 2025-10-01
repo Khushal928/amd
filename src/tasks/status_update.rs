@@ -26,8 +26,6 @@ use tracing::instrument;
 
 use super::Task;
 use crate::graphql::models::{Member, StreakWithMemberId};
-use crate::graphql::mutations::{increment_streak, reset_streak};
-use crate::graphql::queries::{fetch_members, fetch_streaks};
 use crate::graphql::GraphQLClient;
 use crate::ids::{
     AI_CHANNEL_ID, MOBILE_CHANNEL_ID, STATUS_UPDATE_CHANNEL_ID, SYSTEMS_CHANNEL_ID, WEB_CHANNEL_ID,
@@ -66,12 +64,12 @@ const CHANDRA_MOULI: &str = "1265880467047976970";
 #[instrument(level = "debug", skip(ctx))]
 async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow::Result<()> {
     let updates = get_updates(&ctx).await?;
-    let mut members = fetch_members(client.clone()).await?;
+    let mut members = client.fetch_members().await?;
     members.retain(|member| member.year != 4);
 
     // naughty_list -> members who did not send updates
     let (mut naughty_list, mut nice_list) = categorize_members(&members, updates);
-    update_streaks_for_members(client.clone(), &mut naughty_list, &mut nice_list).await?;
+    update_streaks_for_members(&client, &mut naughty_list, &mut nice_list).await?;
 
     let embed = generate_embed(client, members, naughty_list).await?;
     let msg = CreateMessage::new().embed(embed);
@@ -172,17 +170,17 @@ fn categorize_members(
 }
 
 async fn update_streaks_for_members(
-    client: GraphQLClient,
+    client: &GraphQLClient,
     naughty_list: &mut GroupedMember,
     nice_list: &mut Vec<Member>,
 ) -> anyhow::Result<()> {
     for member in nice_list {
-        increment_streak(member, client.clone()).await?;
+        client.increment_streak(member).await?;
     }
 
     for members in naughty_list.values_mut() {
         for member in members {
-            reset_streak(member, client.clone()).await?;
+            client.reset_streak(member).await?;
         }
     }
 
@@ -260,7 +258,7 @@ async fn get_leaderboard_stats(
     client: GraphQLClient,
     members: Vec<Member>,
 ) -> anyhow::Result<(i32, Vec<Member>, i32, Vec<Member>)> {
-    let streaks = fetch_streaks(client).await?;
+    let streaks = client.fetch_streaks().await?;
     let member_map: HashMap<i32, &Member> = members.iter().map(|m| (m.member_id, m)).collect();
 
     let (all_time_high, all_time_high_members) = find_highest_streak(&streaks, &member_map, true);
