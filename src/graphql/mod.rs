@@ -33,7 +33,7 @@ impl GraphQLClient {
     pub fn new(root_url: String) -> Self {
         Self {
             http: Client::new(),
-            root_url: Arc::new(root_url.into()),
+            root_url: Arc::new(root_url),
         }
     }
 

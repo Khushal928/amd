@@ -19,7 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 pub const ROLES_MESSAGE_ID: u64 = 1298636092886749294;
 
 /// Fourth and Third Year Roles for privileged commands
+#[allow(dead_code)]
 pub const FOURTH_YEAR_ROLE_ID: u64 = 1135793659040772240;
+#[allow(dead_code)]
 pub const THIRD_YEAR_ROLE_ID: u64 = 1166292683317321738;
 
 // Role IDs

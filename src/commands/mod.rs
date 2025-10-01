@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// Checks if the author has the Fourth Year or Third Year role. Can be used as an authorization procedure for other commands.
+#[allow(dead_code)]
 async fn is_privileged(ctx: &Context<'_>) -> bool {
     if let Some(guild_id) = ctx.guild_id() {
         if let Ok(member) = guild_id.member(ctx, ctx.author().id).await {
