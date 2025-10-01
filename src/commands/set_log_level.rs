@@ -22,13 +22,9 @@ use tracing::info;
 use tracing::instrument;
 use tracing_subscriber::EnvFilter;
 /// Returns whether the provided `level` String is a valid filter level for tracing.
-fn validate_level(level: &String) -> bool {
+fn validate_level(level: &str) -> bool {
     const VALID_LEVELS: [&str; 5] = ["trace", "debug", "info", "warn", "error"];
-    if !VALID_LEVELS.contains(&level.as_str()) {
-        true
-    } else {
-        false
-    }
+    !VALID_LEVELS.contains(&level)
 }
 
 fn build_filter_string(level: String, enable_debug_libraries: bool) -> anyhow::Result<String> {
