@@ -7,7 +7,7 @@ The rest of this document will explain the high-level details of the internals o
 # Documentation
 
 ## Environment Variables
-`AMD_RUST_ENV`: Controls the log levels, although it can still be changed at runtime. Set to `production` to only log messages at the `INFO` level or above. If set to anything other than `production` say `dev`, tracing will also output logs to `stdout` as well to the file `amd.log`.
+`DEBUG`: Controls whether logs are printed to stdout. Set to `true` to only log messages into `amd.log`. If set to `false`, tracing will also output logs to `stdout` as well to `amd.log`.
 `ENABLE_DEBUG_LIBRARIES`: Boolean that controls whether debug information from non-amd crates are logged.
 `DISCORD_TOKEN`: The token for the bot.
 `OWNER_ID`: The Discord User ID for a user that will be designated as the owner and will have access to certain privileged commands such as `set_log_level`.

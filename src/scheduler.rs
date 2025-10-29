@@ -15,30 +15,34 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-use crate::tasks::{get_tasks, Task};
+//! This module is a simple cron equivalent. It spawns threads for the [`Task`]s that need to be completed.
+use crate::{
+    graphql::GraphQLClient,
+    tasks::{get_tasks, Task},
+};
 
 use serenity::client::Context as SerenityContext;
 use tokio::spawn;
-use tracing::{debug, error, trace};
+use tracing::{debug, error, instrument};
 
-pub async fn run_scheduler(ctx: SerenityContext) {
-    trace!("Running scheduler");
+#[instrument(level = "debug", skip(ctx))]
+pub async fn run_scheduler(ctx: SerenityContext, client: GraphQLClient) {
     let tasks = get_tasks();
 
     for task in tasks {
-        debug!("Spawing task {}", task.name());
-        spawn(schedule_task(ctx.clone(), task));
+        // TODO: Panics in this thread might be silent and won't be noticed. It should be caught, safely unwinded and ideally reported.
+        spawn(schedule_task(ctx.clone(), task, client.clone()));
     }
 }
 
-async fn schedule_task(ctx: SerenityContext, task: Box<dyn Task>) {
+#[instrument(level = "debug", skip(ctx))]
+async fn schedule_task(ctx: SerenityContext, task: Box<dyn Task>, client: GraphQLClient) {
     loop {
         let next_run_in = task.run_in();
-        debug!("Task {}: Next run in {:?}", task.name(), next_run_in);
         tokio::time::sleep(next_run_in).await;
 
         debug!("Running task {}", task.name());
-        if let Err(e) = task.run(ctx.clone()).await {
+        if let Err(e) = task.run(ctx.clone(), client.clone()).await {
             error!("Could not run task {}, error {}", task.name(), e);
         }
     }

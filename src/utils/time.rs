@@ -18,16 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use chrono::{DateTime, Datelike, Local, TimeZone};
 use chrono_tz::Asia::Kolkata;
 use chrono_tz::Tz;
-use tracing::debug;
 
 use std::time::Duration;
 
 pub fn time_until(hour: u32, minute: u32) -> Duration {
-    debug!(
-        "time_until called with args hour: {}, minute: {}",
-        hour, minute
-    );
-
     let now = Local::now().with_timezone(&Kolkata);
     let today_run = Kolkata
         .with_ymd_and_hms(now.year(), now.month(), now.day(), hour, minute, 0)
@@ -40,10 +34,7 @@ pub fn time_until(hour: u32, minute: u32) -> Duration {
         today_run + chrono::Duration::days(1)
     };
 
-    debug!("now: {}, today_run: {}", now, today_run);
-
     let duration = next_run.signed_duration_since(now);
-    debug!("duration: {}", duration);
     Duration::from_secs(duration.num_seconds().max(0) as u64)
 }
 

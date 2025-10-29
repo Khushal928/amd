@@ -15,15 +15,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+//! A trait to define a job that needs to be executed regularly, for example checking for status updates daily.
 mod lab_attendance;
 mod status_update;
+
+use std::fmt::{self, Debug};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use lab_attendance::PresenseReport;
 use serenity::client::Context;
-use status_update::StatusUpdateCheck;
+use status_update::StatusUpdateReport;
 use tokio::time::Duration;
+
+use crate::graphql::GraphQLClient;
 
 /// A [`Task`] is any job that needs to be executed on a regular basis.
 /// A task has a function [`Task::run_in`] that returns the time till the
@@ -32,11 +37,20 @@ use tokio::time::Duration;
 pub trait Task: Send + Sync {
     fn name(&self) -> &str;
     fn run_in(&self) -> Duration;
-    async fn run(&self, ctx: Context) -> Result<()>;
+    async fn run(&self, ctx: Context, client: GraphQLClient) -> Result<()>;
+}
+
+impl Debug for Box<dyn Task> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Task")
+            .field("name", &self.name())
+            .field("run in", &self.run_in())
+            .finish()
+    }
 }
 
 /// Analogous to [`crate::commands::get_commands`], every task that is defined
 /// must be included in the returned vector in order for it to be scheduled.
 pub fn get_tasks() -> Vec<Box<dyn Task>> {
-    vec![Box::new(StatusUpdateCheck), Box::new(PresenseReport)]
+    vec![Box::new(PresenseReport), Box::new(StatusUpdateReport)]
 }

@@ -25,8 +25,9 @@ use serenity::async_trait;
 use std::collections::HashMap;
 use tracing::{debug, trace};
 
+use crate::graphql::GraphQLClient;
 use crate::{
-    graphql::{models::AttendanceRecord, queries::fetch_attendance},
+    graphql::models::AttendanceRecord,
     ids::THE_LAB_CHANNEL_ID,
     utils::time::{get_five_forty_five_pm_timestamp, time_until},
 };
@@ -46,14 +47,18 @@ impl Task for PresenseReport {
         time_until(18, 00)
     }
 
-    async fn run(&self, ctx: SerenityContext) -> anyhow::Result<()> {
-        check_lab_attendance(ctx).await
+    async fn run(&self, ctx: SerenityContext, client: GraphQLClient) -> anyhow::Result<()> {
+        check_lab_attendance(ctx, client).await
     }
 }
 
-pub async fn check_lab_attendance(ctx: SerenityContext) -> anyhow::Result<()> {
+pub async fn check_lab_attendance(
+    ctx: SerenityContext,
+    client: GraphQLClient,
+) -> anyhow::Result<()> {
     trace!("Starting lab attendance check");
-    let attendance = fetch_attendance()
+    let attendance = client
+        .fetch_attendance()
         .await
         .context("Failed to fetch attendance from Root")?;
 
@@ -97,7 +102,7 @@ async fn send_lab_closed_message(ctx: SerenityContext) -> anyhow::Result<()> {
         .unwrap_or_else(|| bot_user.default_avatar_url());
 
     let embed = CreateEmbed::new()
-        .title(format!("Presense Report - {}", today_date))
+        .title(format!("Presense Report - {today_date}"))
         .url(TITLE_URL)
         .author(
             CreateEmbedAuthor::new("amD")
@@ -156,7 +161,7 @@ async fn send_attendance_report(
     description.push_str(&format_attendance_list("Late", &late_list));
 
     let embed = CreateEmbed::new()
-        .title(format!("Presense Report - {}", today_date))
+        .title(format!("Presense Report - {today_date}"))
         .url(TITLE_URL)
         .author(
             CreateEmbedAuthor::new("amD")
@@ -191,15 +196,15 @@ fn format_attendance_list(title: &str, list: &[AttendanceRecord]) -> String {
         }
     }
 
-    let mut result = format!("# {}\n", title);
+    let mut result = format!("# {title}\n");
 
     for year in 1..=3 {
         if let Some(names) = by_year.get(&year) {
             if !names.is_empty() {
-                result.push_str(&format!("### Year {}\n", year));
+                result.push_str(&format!("### Year {year}\n"));
 
                 for name in names {
-                    result.push_str(&format!("- {}\n", name));
+                    result.push_str(&format!("- {name}\n"));
                 }
                 result.push('\n');
             }

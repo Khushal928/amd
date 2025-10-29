@@ -2,7 +2,7 @@ name: Lint
 
 on:
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: ["production", "develop"]
 
 jobs:
   clippy:
