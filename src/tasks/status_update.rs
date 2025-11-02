@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serenity::all::{CacheHttp, ChannelId, Context, CreateEmbed, CreateMessage};
 use serenity::async_trait;
@@ -57,9 +57,9 @@ pub async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow:
     members.retain(|member| member.year != 4);
 
     // naughty_list -> members who did not send updates
-    let naughty_list = categorize_members(&members);
+    let (naughty_list, years_on_break) = categorize_members(&members);
 
-    let embed = generate_embed(members, naughty_list).await?;
+    let embed = generate_embed(members, naughty_list, years_on_break).await?;
     let msg = CreateMessage::new().embed(embed);
 
     let status_update_channel = ChannelId::new(STATUS_UPDATE_CHANNEL_ID);
@@ -68,8 +68,9 @@ pub async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow:
     Ok(())
 }
 
-fn categorize_members(members: &Vec<Member>) -> GroupedMember {
+fn categorize_members(members: &Vec<Member>) -> (GroupedMember, Vec<i32>) {
     let mut naughty_list: HashMap<Option<String>, Vec<Member>> = HashMap::new();
+    let mut years_on_break: HashSet<i32> = HashSet::new();
 
     for member in members {
         let Some(status) = &member.status else {
@@ -79,18 +80,24 @@ fn categorize_members(members: &Vec<Member>) -> GroupedMember {
             continue;
         };
 
-        if !on_date.on_break && !on_date.is_sent {
+        if on_date.on_break {
+            years_on_break.insert(member.year);
+            continue;
+        }
+
+        if !on_date.is_sent {
             let track = member.track.clone();
             naughty_list.entry(track).or_default().push(member.clone());
         }
     }
 
-    naughty_list
+    (naughty_list, years_on_break.into_iter().collect())
 }
 
 async fn generate_embed(
     members: Vec<Member>,
     naughty_list: GroupedMember,
+    years_on_break: Vec<i32>,
 ) -> anyhow::Result<CreateEmbed> {
     let (all_time_high, all_time_high_members, current_highest, current_highest_members) =
         get_leaderboard_stats(members).await?;
@@ -105,6 +112,11 @@ async fn generate_embed(
         "## Current Highest Streak: {current_highest} days\n"
     ));
     description.push_str(&format_members(&current_highest_members));
+
+    if !years_on_break.is_empty() {
+        description.push_str("## The Following Batches Are On Break:\n");
+        description.push_str(&format_breaks(years_on_break));
+    }
 
     if !naughty_list.is_empty() {
         description.push_str("# Defaulters\n");
@@ -131,6 +143,24 @@ fn format_members(members: &[Member]) -> String {
     } else {
         String::from("More than five members hold this record!\n")
     }
+}
+
+fn format_breaks(mut years_on_break: Vec<i32>) -> String {
+    years_on_break.sort();
+    let list = years_on_break
+        .iter()
+        .map(|&year| {
+            let year_label = match year {
+                1 => "First Years",
+                2 => "Second Years",
+                3 => "Third Years",
+                _ => return format!("Year {}", year),
+            };
+            format!("- {}", year_label)
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("{list}\n")
 }
 
 fn format_defaulters(naughty_list: &GroupedMember) -> String {
