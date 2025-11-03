@@ -17,14 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 use std::collections::{HashMap, HashSet};
 
-use serenity::all::{CacheHttp, ChannelId, Context, CreateEmbed, CreateMessage};
+use serenity::all::{CacheHttp, ChannelId, Context, CreateEmbed, CreateMessage, GuildId};
 use serenity::async_trait;
 use tracing::instrument;
+use tracing::{info, warn};
 
 use super::Task;
 use crate::graphql::models::Member;
 use crate::graphql::GraphQLClient;
-use crate::ids::STATUS_UPDATE_CHANNEL_ID;
+use crate::ids::{AMFOSS_GUILD_ID, STATUS_UPDATE_CHANNEL_ID};
 use crate::utils::time::time_until;
 
 /// Checks for status updates daily at 5 AM.
@@ -59,6 +60,7 @@ pub async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow:
     // naughty_list -> members who did not send updates
     let (naughty_list, years_on_break) = categorize_members(&members);
 
+    kick_lazy_bums(&ctx, naughty_list.values().flatten().cloned().collect()).await;
     let embed = generate_embed(members, naughty_list, years_on_break).await?;
     let msg = CreateMessage::new().embed(embed);
 
@@ -161,6 +163,51 @@ fn format_breaks(mut years_on_break: Vec<i32>) -> String {
         .collect::<Vec<_>>()
         .join("\n");
     format!("{list}\n")
+}
+
+async fn kick_lazy_bums(ctx: &Context, naughty_list: Vec<Member>) {
+    let guild_id = GuildId::new(AMFOSS_GUILD_ID);
+
+    for member in naughty_list {
+        let consecutive_misses = member
+            .status
+            .as_ref()
+            .and_then(|s| s.consecutive_misses)
+            .unwrap_or(0);
+
+        if consecutive_misses > 3 {
+            let discord_id = match member.discord_id.parse::<u64>() {
+                Ok(id) => id,
+                Err(_) => {
+                    warn!(
+                        "Cannot kick {}: Invalid Discord ID '{}'",
+                        member.name, member.discord_id
+                    );
+                    return;
+                }
+            };
+
+            let reason = "You have been kicked for not sending status updates, reach out to a mentor for further details.";
+
+            match guild_id
+                .kick_with_reason(ctx.http(), discord_id, reason)
+                .await
+            {
+                Ok(_) => {
+                    info!(
+                        "Kicked Member: {}, ID: {} for failing to send updates.",
+                        member.name, member.member_id
+                    )
+                }
+                Err(e) => {
+                    info!(
+                        "Failed to Kick (Name: {}, ID: {}): {}",
+                        member.name, member.member_id, e
+                    )
+                }
+            }
+        }
+    }
 }
 
 fn format_defaulters(naughty_list: &GroupedMember) -> String {

@@ -15,6 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+pub const AMFOSS_GUILD_ID: u64 = 755790742189899838;
+
 /// Points to the Embed in the #roles channel.
 pub const ROLES_MESSAGE_ID: u64 = 1298636092886749294;
 
