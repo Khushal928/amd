@@ -38,7 +38,7 @@ impl Task for StatusUpdateReport {
     }
 
     fn run_in(&self) -> tokio::time::Duration {
-        time_until(5, 15)
+        time_until(6, 45)
         // Duration::from_secs(1) // for development
     }
 
