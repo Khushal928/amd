@@ -26,18 +26,24 @@ use reqwest::Client;
 pub struct GraphQLClient {
     http: Client,
     root_url: Arc<String>,
+    api_key: Arc<String>,
 }
 
 impl GraphQLClient {
-    pub fn new(root_url: String) -> Self {
+    pub fn new(root_url: String, api_key: String) -> Self {
         Self {
             http: Client::new(),
             root_url: Arc::new(root_url),
+            api_key: Arc::new(api_key),
         }
     }
 
     pub fn root_url(&self) -> &str {
         &self.root_url
+    }
+
+    pub fn api_key(&self) -> &str {
+        &self.api_key
     }
 
     pub fn http(&self) -> Client {

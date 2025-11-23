@@ -55,11 +55,11 @@ struct Data {
 
 impl Data {
     /// Returns a new [`Data`] with an empty `reaction_roles` field and the passed-in `reload_handle`.
-    fn new(reload_handle: ReloadHandle, root_url: String) -> Self {
+    fn new(reload_handle: ReloadHandle, root_url: String, api_key: String) -> Self {
         Data {
             reaction_roles: HashMap::new(),
             log_reload_handle: reload_handle,
-            graphql_client: GraphQLClient::new(root_url),
+            graphql_client: GraphQLClient::new(root_url, api_key),
         }
     }
 }
@@ -95,7 +95,11 @@ fn build_framework(
 }
 
 fn prepare_data(config: &Config, reload_handle: ReloadHandle) -> Data {
-    let mut data = Data::new(reload_handle, config.root_url.clone());
+    let mut data = Data::new(
+        reload_handle,
+        config.root_url.clone(),
+        config.api_key.clone(),
+    );
     data.populate_with_reaction_roles();
     data
 }

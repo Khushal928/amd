@@ -60,6 +60,7 @@ impl GraphQLClient {
         let response = self
             .http()
             .post(self.root_url())
+            .bearer_auth(self.api_key())
             .json(&serde_json::json!({"query": query, "variables":variables}))
             .send()
             .await
@@ -115,6 +116,7 @@ impl GraphQLClient {
         let response = self
             .http()
             .post(self.root_url())
+            .bearer_auth(self.api_key())
             .json(&serde_json::json!({ "query": query }))
             .send()
             .await
