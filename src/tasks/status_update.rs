@@ -72,7 +72,7 @@ pub async fn status_update_check(ctx: Context, client: GraphQLClient) -> anyhow:
 
 fn categorize_members(members: &Vec<Member>) -> (GroupedMember, Vec<i32>) {
     let mut naughty_list: HashMap<Option<String>, Vec<Member>> = HashMap::new();
-    let mut years_on_break: HashSet<i32> = HashSet::new();
+    let mut members_by_year: HashMap<i32, Vec<bool>> = HashMap::new();
 
     for member in members {
         let Some(status) = &member.status else {
@@ -82,10 +82,14 @@ fn categorize_members(members: &Vec<Member>) -> (GroupedMember, Vec<i32>) {
             continue;
         };
 
+        if let Some(year) = member.year {
+            members_by_year
+                .entry(year)
+                .or_default()
+                .push(on_date.on_break);
+        }
+
         if on_date.on_break {
-            if let Some(year) = member.year {
-                years_on_break.insert(year);
-            }
             continue;
         }
 
@@ -94,6 +98,13 @@ fn categorize_members(members: &Vec<Member>) -> (GroupedMember, Vec<i32>) {
             naughty_list.entry(track).or_default().push(member.clone());
         }
     }
+
+    // Only register a year on break if all members of that year are on break
+    let years_on_break: Vec<i32> = members_by_year
+        .into_iter()
+        .filter(|(_, breaks)| breaks.iter().all(|&on_break| on_break))
+        .map(|(year, _)| year)
+        .collect();
 
     (naughty_list, years_on_break.into_iter().collect())
 }
