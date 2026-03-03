@@ -46,6 +46,7 @@ impl GraphQLClient {
             }
             track
             year
+            email
           }
         }"#;
 
