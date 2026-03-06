@@ -129,10 +129,10 @@ fn fetch_inbox() -> anyhow::Result<Vec<EmailDetails>> {
         .connect()
         .context("Failed to connect to IMAP server")?;
 
-    let email_id = std::env::var("EMAIL_ID").context("EMAIL_ID not found in env")?;
+    let email_id = std::env::var("AMD_EMAIL_ID").context("EMAIL_ID not found in env")?;
 
     let app_password =
-        std::env::var("APP_PASSWORD").context("APP_PASSWORD not found in the ENV")?;
+        std::env::var("AMD_APP_PASSWORD").context("APP_PASSWORD not found in the ENV")?;
 
     let mut session = client
         .login(email_id, app_password)
