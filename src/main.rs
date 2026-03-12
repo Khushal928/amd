@@ -107,7 +107,7 @@ fn prepare_data(config: &Config, reload_handle: ReloadHandle) -> Data {
 async fn build_client(config: &Config, data: Data) -> Result<Client, anyhow::Error> {
     ClientBuilder::new(
         config.discord_token.clone(),
-        GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT,
+        GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILD_MEMBERS,
     )
     .framework(build_framework(
         config.owner_id,
@@ -159,6 +159,37 @@ async fn event_handler(
         }
         FullEvent::ReactionRemove { removed_reaction } => {
             handle_reaction(ctx, removed_reaction, data, false).await?;
+        }
+
+        FullEvent::GuildMemberRemoval { guild_id: _, user, member_data_if_available } => {
+
+            if let Some(member) = member_data_if_available {
+
+                let roles: Vec<String> = member.roles
+                    .iter()
+                    .filter(|r| r.get() != member.guild_id.get())
+                    .map(|r| r.get().to_string())
+                    .collect();
+
+                if !roles.is_empty() {
+                    data.graphql_client
+                        .save_member_roles(user.id.to_string(), roles)
+                        .await?;
+                }
+            }
+        }
+        FullEvent::GuildMemberAddition { new_member } => {
+
+            let roles = data
+                .graphql_client
+                .get_member_roles(new_member.user.id.to_string())
+                .await?;
+
+            for role in roles {
+                if let Ok(role_id) = role.parse::<u64>() {
+                    let _ = new_member.add_role(ctx, RoleId::new(role_id)).await;
+                }
+            }
         }
         _ => {}
     }

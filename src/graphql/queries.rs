@@ -146,4 +146,63 @@ impl GraphQLClient {
         );
         Ok(attendance)
     }
+
+    pub async fn save_member_roles( &self, discord_id: String, roles: Vec<String>,) -> anyhow::Result<()> {
+
+        let query = r#"
+        mutation($discordId: String!, $roles: [String!]!) {
+            saveMemberRoles(discordId: $discordId, roles: $roles)
+        }"#;
+
+        let variables = serde_json::json!({
+            "discordId": discord_id,
+            "roles": roles
+        });
+
+        let res = self.http()
+        .post(self.root_url())
+        .bearer_auth(self.api_key())
+        .json(&serde_json::json!({
+            "query": query,
+            "variables": variables
+        }))
+        .send()
+        .await?;        
+        Ok(())
+    }
+
+    pub async fn get_member_roles( &self, discord_id: String,) -> anyhow::Result<Vec<String>> {
+        let query = r#"
+        query($discordId: String!) {
+            memberRoles(discordId: $discordId)
+        }"#;
+
+        let variables = serde_json::json!({
+            "discordId": discord_id
+        });
+
+        let response = self.http()
+            .post(self.root_url())
+            .bearer_auth(self.api_key())
+            .json(&serde_json::json!({
+                "query": query,
+                "variables": variables
+            }))
+            .send()
+            .await?
+            .json::<serde_json::Value>()
+            .await?;
+
+        //remove @everyone role, a defult role that every member has and is not useful for our purposes. It has the same ID as the guild, so we can filter it out by comparing with the guild ID.
+        let roles = response["data"]["memberRoles"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|v| v.as_str()) 
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(roles)
+    }
+
 }
