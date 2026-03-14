@@ -147,8 +147,11 @@ impl GraphQLClient {
         Ok(attendance)
     }
 
-    pub async fn save_member_roles( &self, discord_id: String, roles: Vec<String>,) -> anyhow::Result<()> {
-
+    pub async fn save_member_roles(
+        &self,
+        discord_id: String,
+        roles: Vec<String>,
+    ) -> anyhow::Result<()> {
         let query = r#"
         mutation($discordId: String!, $roles: [String!]!) {
             saveMemberRoles(discordId: $discordId, roles: $roles)
@@ -159,19 +162,27 @@ impl GraphQLClient {
             "roles": roles
         });
 
-        let res = self.http()
-        .post(self.root_url())
-        .bearer_auth(self.api_key())
-        .json(&serde_json::json!({
-            "query": query,
-            "variables": variables
-        }))
-        .send()
-        .await?;        
+        let res = self
+            .http()
+            .post(self.root_url())
+            .bearer_auth(self.api_key())
+            .json(&serde_json::json!({
+                "query": query,
+                "variables": variables
+            }))
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let response: serde_json::Value = res.json().await?;
+
+        if response.get("errors").is_some() {
+            anyhow::bail!("GraphQL error: {:?}", response["errors"]);
+        }
         Ok(())
     }
 
-    pub async fn get_member_roles( &self, discord_id: String,) -> anyhow::Result<Vec<String>> {
+    pub async fn get_member_roles(&self, discord_id: String) -> anyhow::Result<Vec<String>> {
         let query = r#"
         query($discordId: String!) {
             memberRoles(discordId: $discordId)
@@ -181,7 +192,8 @@ impl GraphQLClient {
             "discordId": discord_id
         });
 
-        let response = self.http()
+        let response = self
+            .http()
             .post(self.root_url())
             .bearer_auth(self.api_key())
             .json(&serde_json::json!({
@@ -193,16 +205,14 @@ impl GraphQLClient {
             .json::<serde_json::Value>()
             .await?;
 
-        //remove @everyone role, a defult role that every member has and is not useful for our purposes. It has the same ID as the guild, so we can filter it out by comparing with the guild ID.
+        // Collect roles returned by the API as strings; any filtering (e.g. removing @everyone) is handled by the caller.
         let roles = response["data"]["memberRoles"]
             .as_array()
             .unwrap_or(&vec![])
             .iter()
-            .filter_map(|v| v.as_str()) 
+            .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect();
-
         Ok(roles)
     }
-
 }
