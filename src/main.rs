@@ -184,21 +184,28 @@ async fn event_handler(
             }
         }
         FullEvent::GuildMemberAddition { new_member } => {
-            let roles = match data
+            let (exists, roles) = match data
                 .graphql_client
                 .get_member_roles(new_member.user.id.to_string())
                 .await
             {
                 Ok(r) => r,
                 Err(e) => {
-                    println!("Failed to fetch roles for {}: {:?}", new_member.user.id, e);
-                    Vec::new()
+                    println!("Failed to fetch roles: {:?}", e);
+                    (false, vec![])
                 }
             };
 
-            for role in roles {
-                if let Ok(role_id) = role.parse::<u64>() {
-                    let _ = new_member.add_role(ctx, RoleId::new(role_id)).await;
+            if let Ok(member) = new_member.guild_id.member(ctx, new_member.user.id).await {
+                // restore roles
+                for role in roles {
+                    if let Ok(role_id) = role.parse::<u64>() {
+                        let _ = member.add_role(ctx, RoleId::new(role_id)).await;
+                    }
+                }
+                // probated role
+                if exists {
+                    let _ = member.add_role(ctx, RoleId::new(1484798446228475905)).await;
                 }
             }
         }

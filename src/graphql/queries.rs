@@ -182,10 +182,16 @@ impl GraphQLClient {
         Ok(())
     }
 
-    pub async fn get_member_roles(&self, discord_id: String) -> anyhow::Result<Vec<String>> {
+    pub async fn get_member_roles(
+        &self,
+        discord_id: String,
+    ) -> anyhow::Result<(bool, Vec<String>)> {
         let query = r#"
         query($discordId: String!) {
-            memberRoles(discordId: $discordId)
+            memberRoles(discordId: $discordId){
+                exists
+                roles
+            }
         }"#;
 
         let variables = serde_json::json!({
@@ -206,13 +212,17 @@ impl GraphQLClient {
             .await?;
 
         // Collect roles returned by the API as strings; any filtering (e.g. removing @everyone) is handled by the caller.
-        let roles = response["data"]["memberRoles"]
+        let data = &response["data"]["memberRoles"];
+
+        let exists = data["exists"].as_bool().unwrap_or(false);
+
+        let roles = data["roles"]
             .as_array()
             .unwrap_or(&vec![])
             .iter()
             .filter_map(|v| v.as_str())
             .map(|s| s.to_string())
             .collect();
-        Ok(roles)
+        Ok((exists, roles))
     }
 }
